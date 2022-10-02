@@ -26,6 +26,9 @@ contract ERC1155s__Test is Test {
 
         vm.prank(bob);
         SuperShares._safeTransferFrom(alice, bob, 1, bobAllowance, "");
+        
+        uint256 bobBalance = SuperShares.balanceOf(bob, 1);
+        assertEq(bobBalance, bobAllowance);
     }
 
 }
