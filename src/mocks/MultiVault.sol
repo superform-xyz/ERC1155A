@@ -5,7 +5,7 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/utils/SafeTransferLib.sol";
 import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
-import {ERC1155s} from "./ERC1155s.sol";
+import {ERC1155s} from "../ERC1155s.sol";
 
 /// @notice Prototype of ERC4626 MultiVault extension
 abstract contract MultiVault is ERC1155s {

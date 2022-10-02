@@ -14,11 +14,6 @@ contract ERC1155s is ERC1155 {
     mapping(address => mapping(address => mapping(uint256 => uint256)))
         public allowance;
 
-    /// @notice This won't work for SuperForm's cross-chain Vaults
-    /// We can't make cross-chain calls to Vaults public variables/getters
-    /// URI should be return address of off-chain hosted Vault data
-    function uri(uint256 id) public view virtual override returns (string memory) {}
-
     function setApprovalForOne(
         address operator,
         uint256 id,
@@ -29,29 +24,17 @@ contract ERC1155s is ERC1155 {
         emit ApprovalForOne(msg.sender, operator, id, amount);
     }
 
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 id,
-        uint256 amount,
-        bytes calldata data
-    ) public virtual override {
-        if (msg.sender == from || isApprovedForAll[from][msg.sender]) {
-            _safeTransferFrom(from, to, id, amount, data);
-        } else if (
-            msg.sender == from || allowance[from][msg.sender][id] >= amount
-        ) {
-            _safeTransferFrom(from, to, id, amount, data);
-        }
-    }
-
+    /// @notice Introducing single approve through "optionality"
+    /// This function will only accept single-approved Ids and fail for everything else
+    /// Caller is expected to know which function to call, worse that can happen is revert
     function _safeTransferFrom(
         address from,
         address to,
         uint256 id,
         uint256 amount,
         bytes calldata data
-    ) internal virtual {
+    ) public virtual {
+        require(msg.sender == from || allowance[from][msg.sender][id] >= amount, "NOT_AUTHORIZED");
         balanceOf[from][id] -= amount;
         balanceOf[to][id] += amount;
 
@@ -70,6 +53,31 @@ contract ERC1155s is ERC1155 {
             "UNSAFE_RECIPIENT"
         );
     }
+
+    /// @notice This won't work for SuperForm's cross-chain Vaults
+    /// We can't make cross-chain calls to Vaults public variables/getters
+    /// URI should be return address of off-chain hosted Vault data
+    /// Could work fine with MultiVault
+    function uri(uint256 id) public view virtual override returns (string memory) {}
+
+    /// @notice More costly option, preserves expected ERC1155 interface & behavior
+    /// Condition checking makes this ERC1155 impl more costly for everybody
+    /// NOTE: Is this use-case for try/catch in solidity? Is it cheaper?
+    // function safeTransferFrom(
+    //     address from,
+    //     address to,
+    //     uint256 id,
+    //     uint256 amount,
+    //     bytes calldata data
+    // ) public virtual override {
+    //     if (msg.sender == from || isApprovedForAll[from][msg.sender]) {
+    //         _safeTransferFrom(from, to, id, amount, data);
+    //     } else if (
+    //         msg.sender == from || allowance[from][msg.sender][id] >= amount
+    //     ) {
+    //         _safeTransferFrom(from, to, id, amount, data);
+    //     }
+    // }
 
     /// @notice BatchTransfer should still operate only with ApproveForAll
     /// Checking for set of approvals makes intended use of batch transfer pointless

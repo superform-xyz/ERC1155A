@@ -8,7 +8,7 @@ update:; forge update
 
 # Build & test
 build  :; forge build
-test :; forge test --match-contract *Test
+test :; forge test
 clean  :; forge clean
 snapshot :; forge snapshot
 fmt    :; forge fmt && forge fmt test/
