@@ -7,7 +7,6 @@ import {FixedPointMathLib} from "solmate/utils/FixedPointMathLib.sol";
 
 import {ERC1155s} from "./ERC1155s.sol";
 
-
 /// @notice Prototype of ERC4626 MultiVault extension
 abstract contract MultiVault is ERC1155s {
     using SafeTransferLib for ERC20;
@@ -84,6 +83,10 @@ abstract contract MultiVault is ERC1155s {
     /// @notice Optional getter
     function getVault(uint256 vaultId) public virtual returns (Vault memory) {
         return abi.decode(vaults[vaultId].vaultData, (Vault));
+    }
+
+    function uri(uint256 id) public view override returns (string memory) {
+
     }
 
     /*///////////////////////////////////////////////////////////////
