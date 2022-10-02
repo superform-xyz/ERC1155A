@@ -1,0 +1,14 @@
+# include .env file and export its env vars
+# (-include to ignore error if it does not exist)
+-include .env
+
+# deps
+install:; forge install
+update:; forge update
+
+# Build & test
+build  :; forge build
+test :; forge test --match-contract *Test
+clean  :; forge clean
+snapshot :; forge snapshot
+fmt    :; forge fmt && forge fmt test/
