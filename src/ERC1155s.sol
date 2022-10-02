@@ -4,8 +4,16 @@ pragma solidity 0.8.17;
 import {ERC1155} from "solmate/tokens/ERC1155.sol";
 
 abstract contract ERC1155s is ERC1155 {
+
+    event ApprovalForOne(address indexed owner, address indexed operator, uint256 id, uint256 amount);
+
     mapping(address => mapping(address => mapping(uint256 => uint256)))
         public allowance;
+
+    /// @notice This won't work for SuperForm's cross-chain Vaults
+    /// We can't make cross-chain calls to Vaults public variables/getters
+    /// URI should be return address of off-chain hosted Vault data
+    function uri(uint256 id) public view override returns (string memory) {}
 
     function setApprovalForOne(
         address operator,
@@ -13,6 +21,8 @@ abstract contract ERC1155s is ERC1155 {
         uint256 amount
     ) public virtual {
         allowance[msg.sender][operator][id] = amount;
+
+        emit ApprovalForOne(msg.sender, operator, id, amount);
     }
 
     function safeTransferFrom(
