@@ -4,13 +4,17 @@ pragma solidity 0.8.19;
 import {ERC1155} from "solmate/tokens/ERC1155.sol";
 import {Strings} from "openzeppelin-contracts/utils/Strings.sol";
 
-/// @title ERC-1155S is a SuperForm specific extension for ERC1155.
-/// 1. Single id approve capability
-///     - Set approve for single id for specified amount
-///     - Use safeTransferFrom() for regular allApproved ids
-///     - Use _safeTransferFrom() for extended singleApproved id
-/// Using standard ERC1155 setApprovalForAll overrides setApprovalForOne
-/// 2. Metadata build out of baseURI and vaultId uint value into https address
+/**
+ * @title ERC1155S
+ * @dev ERC1155S is a SuperForm specific extension for ERC1155.
+ * 1. Single id approve capability
+ *    - Set approve for single id for specified amount
+ *    - Use safeTransferFrom() for regular allApproved ids
+ *    - Use _safeTransferFrom() for extended singleApproved id
+ * Using standard ERC1155 setApprovalForAll overrides setApprovalForOne
+ * 2. Metadata build out of baseURI and vaultId uint value into https address
+ */
+
 abstract contract ERC1155s is ERC1155 {
     /// @notice Event emitted when single id approval is set
     event ApprovalForOne(
@@ -37,20 +41,6 @@ abstract contract ERC1155s is ERC1155 {
     ) public virtual {
         address owner = msg.sender;
         _setApprovalForOne(owner, spender, id, amount);
-    }
-
-    /// @notice Internal function for setting single id approval
-    /// @dev Used for fine-grained control over approvals with increase/decrease allowance
-    function _setApprovalForOne(
-        address owner,
-        address spender,
-        uint256 id,
-        uint256 amount
-    ) internal virtual {
-        require(owner != address(0), "ERC20: approve from the zero address");
-        require(spender != address(0), "ERC20: approve to the zero address");
-        _allowances[owner][spender][id] = amount;
-        emit ApprovalForOne(owner, spender, id, amount);
     }
 
     /// @notice Public getter for existing single id approval
@@ -94,7 +84,12 @@ abstract contract ERC1155s is ERC1155 {
             "ERC20: decreased allowance below zero"
         );
         unchecked {
-            _setApprovalForOne(owner, spender, id, currentAllowance - subtractedValue);
+            _setApprovalForOne(
+                owner,
+                spender,
+                id,
+                currentAllowance - subtractedValue
+            );
         }
 
         return true;
@@ -135,12 +130,26 @@ abstract contract ERC1155s is ERC1155 {
         );
     }
 
+    /// @notice Internal function for setting single id approval
+    /// @dev Used for fine-grained control over approvals with increase/decrease allowance
+    function _setApprovalForOne(
+        address owner,
+        address spender,
+        uint256 id,
+        uint256 amount
+    ) internal virtual {
+        require(owner != address(0), "ERC20: approve from the zero address");
+        require(spender != address(0), "ERC20: approve to the zero address");
+        _allowances[owner][spender][id] = amount;
+        emit ApprovalForOne(owner, spender, id, amount);
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     ///                        METADATA SECTION                             ///
     ///////////////////////////////////////////////////////////////////////////
 
     /// @notice See {IERC721Metadata-tokenURI}.
-    /// @dev compute return string from baseURI set for this contract and unique vaultId
+    /// @dev Compute return string from baseURI set for this contract and unique vaultId
     function uri(
         uint256 superFormId
     ) public view virtual override returns (string memory) {
@@ -148,7 +157,7 @@ abstract contract ERC1155s is ERC1155 {
             string(abi.encodePacked(_baseURI(), Strings.toString(superFormId)));
     }
 
-    /// @notice used to construct return url
+    /// @notice Used to construct return url
     /// NOTE: add setter?
     function _baseURI() internal pure returns (string memory) {
         return "https://api.superform.xyz/superposition/";
