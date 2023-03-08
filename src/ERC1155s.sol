@@ -2,7 +2,7 @@
 pragma solidity 0.8.19;
 
 import {ERC1155} from "solmate/tokens/ERC1155.sol";
-
+import {Strings} from "openzeppelin-contracts/utils/Strings.sol";
 
 /// @title ERC-1155S is a SuperForm specific extension for ERC1155.
 /// 1. Single id approve capability
@@ -12,35 +12,99 @@ import {ERC1155} from "solmate/tokens/ERC1155.sol";
 /// Using standard ERC1155 setApprovalForAll overrides setApprovalForOne
 /// 2. Metadata build out of baseURI and vaultId uint value into https address
 abstract contract ERC1155s is ERC1155 {
+    /// @notice Event emitted when single id approval is set
     event ApprovalForOne(
         address indexed owner,
-        address indexed operator,
+        address indexed spender,
         uint256 id,
         uint256 amount
     );
 
-    /// @notice Mapping for single approved ids
-    /// @dev owner => operator => id => amount
-    mapping(address => mapping(address => mapping(uint256 => uint256)))
-        public allowance;
+    /// @notice ERC20-like mapping for single id approvals
+    mapping(address owner => mapping(address spender => mapping(uint256 id => uint256 amount)))
+        private _allowances;
 
-    /// @notice Approve specified id for arbitrary amount of tokens
-    /// @dev will work only with _safeTransferFrom()
+    ///////////////////////////////////////////////////////////////////////////
+    ///                     SIGNLE APPROVE SECTION                          ///
+    ///////////////////////////////////////////////////////////////////////////
+
+    /// @notice Public function for setting single id approval
+    /// @dev Works only with _safeTransferFrom() function
     function setApprovalForOne(
-        address operator,
+        address spender,
         uint256 id,
         uint256 amount
     ) public virtual {
-        allowance[msg.sender][operator][id] = amount;
+        address owner = msg.sender;
+        _setApprovalForOne(owner, spender, id, amount);
+    }
 
-        emit ApprovalForOne(msg.sender, operator, id, amount);
+    /// @notice Internal function for setting single id approval
+    /// @dev Used for fine-grained control over approvals with increase/decrease allowance
+    function _setApprovalForOne(
+        address owner,
+        address spender,
+        uint256 id,
+        uint256 amount
+    ) internal virtual {
+        require(owner != address(0), "ERC20: approve from the zero address");
+        require(spender != address(0), "ERC20: approve to the zero address");
+        _allowances[owner][spender][id] = amount;
+        emit ApprovalForOne(owner, spender, id, amount);
+    }
+
+    /// @notice Public getter for existing single id approval
+    /// @dev Re-adapted from ERC20
+    function allowance(
+        address owner,
+        address spender,
+        uint256 id
+    ) public view virtual returns (uint256) {
+        return _allowances[owner][spender][id];
+    }
+
+    /// @notice Public function for increasing single id approval amount
+    /// @dev Re-adapted from ERC20
+    function increaseAllowance(
+        address spender,
+        uint256 id,
+        uint256 addedValue
+    ) public virtual returns (bool) {
+        address owner = msg.sender;
+        _setApprovalForOne(
+            owner,
+            spender,
+            id,
+            allowance(owner, spender, id) + addedValue
+        );
+        return true;
+    }
+
+    /// @notice Public function for decreasing single id approval amount
+    /// @dev Re-adapted from ERC20
+    function decreaseAllowance(
+        address spender,
+        uint256 id,
+        uint256 subtractedValue
+    ) public virtual returns (bool) {
+        address owner = msg.sender;
+        uint256 currentAllowance = allowance(owner, spender, id);
+        require(
+            currentAllowance >= subtractedValue,
+            "ERC20: decreased allowance below zero"
+        );
+        unchecked {
+            _setApprovalForOne(owner, spender, id, currentAllowance - subtractedValue);
+        }
+
+        return true;
     }
 
     /// @notice Transfer singleApproved id with this function
-    /// This function will only accept single-approved Ids and fail for everything else
-    /// Caller is expected to know which function to call, worse that can happen is revert
-    /// BatchTransfer should still operate only with ApproveForAll
-    /// Checking for set of approvals makes intended use of batch transfer pointless
+    /// @dev This function will only accept single-approved Ids and fail for everything else
+    /// @dev Caller is expected to know which function to call, worse that can happen is revert
+    /// @dev BatchTransfer should still operate only with ApproveForAll
+    /// @dev Checking for set of approvals makes intended use of batch transfer pointless
     function _safeTransferFrom(
         address from,
         address to,
@@ -49,7 +113,7 @@ abstract contract ERC1155s is ERC1155 {
         bytes calldata data
     ) public virtual {
         require(
-            msg.sender == from || allowance[from][msg.sender][id] >= amount,
+            msg.sender == from || _allowances[from][msg.sender][id] >= amount,
             "NOT_AUTHORIZED"
         );
         balanceOf[from][id] -= amount;
@@ -75,43 +139,19 @@ abstract contract ERC1155s is ERC1155 {
     ///                        METADATA SECTION                             ///
     ///////////////////////////////////////////////////////////////////////////
 
-    /// @dev See {IERC721Metadata-tokenURI}.
-    /// compute return string from baseURI set for this contract and unique vaultId
-    function uri(uint256 vaultId)
-        public
-        view
-        virtual
-        override
-        returns (string memory)
-    {
-        return string(abi.encodePacked(_baseURI(), toString(vaultId)));
+    /// @notice See {IERC721Metadata-tokenURI}.
+    /// @dev compute return string from baseURI set for this contract and unique vaultId
+    function uri(
+        uint256 superFormId
+    ) public view virtual override returns (string memory) {
+        return
+            string(abi.encodePacked(_baseURI(), Strings.toString(superFormId)));
     }
 
-    /// @dev used to construct return url
+    /// @notice used to construct return url
     /// NOTE: add setter?
     function _baseURI() internal pure returns (string memory) {
         return "https://api.superform.xyz/superposition/";
-    }
-
-    /// Inspired by OraclizeAPI's implementation - MIT licence
-    /// https://github.com/oraclize/ethereum-api/blob/b42146b063c7d6ee1358846c198246239e9360e8/oraclizeAPI_0.4.25.sol
-    function toString(uint256 value) internal pure returns (string memory) {
-        if (value == 0) {
-            return "0";
-        }
-        uint256 temp = value;
-        uint256 digits;
-        while (temp != 0) {
-            digits++;
-            temp /= 10;
-        }
-        bytes memory buffer = new bytes(digits);
-        while (value != 0) {
-            digits -= 1;
-            buffer[digits] = bytes1(uint8(48 + uint256(value % 10)));
-            value /= 10;
-        }
-        return string(buffer);
     }
 }
 
