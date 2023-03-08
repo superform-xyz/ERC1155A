@@ -1,8 +1,16 @@
-// SPDX-License-Identifier: UNLICENSED
+/// SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.19;
 
 import {ERC1155} from "solmate/tokens/ERC1155.sol";
 
+
+/// @title ERC-1155S is a SuperForm specific extension for ERC1155.
+/// 1. Single id approve capability
+///     - Set approve for single id for specified amount
+///     - Use safeTransferFrom() for regular allApproved ids
+///     - Use _safeTransferFrom() for extended singleApproved id
+/// Using standard ERC1155 setApprovalForAll overrides setApprovalForOne
+/// 2. Metadata build out of baseURI and vaultId uint value into https address
 abstract contract ERC1155s is ERC1155 {
     event ApprovalForOne(
         address indexed owner,
@@ -11,9 +19,13 @@ abstract contract ERC1155s is ERC1155 {
         uint256 amount
     );
 
+    /// @notice Mapping for single approved ids
+    /// @dev owner => operator => id => amount
     mapping(address => mapping(address => mapping(uint256 => uint256)))
         public allowance;
 
+    /// @notice Approve specified id for arbitrary amount of tokens
+    /// @dev will work only with _safeTransferFrom()
     function setApprovalForOne(
         address operator,
         uint256 id,
@@ -24,7 +36,7 @@ abstract contract ERC1155s is ERC1155 {
         emit ApprovalForOne(msg.sender, operator, id, amount);
     }
 
-    /// @notice Introducing single approve through "optionality"
+    /// @notice Transfer singleApproved id with this function
     /// This function will only accept single-approved Ids and fail for everything else
     /// Caller is expected to know which function to call, worse that can happen is revert
     /// BatchTransfer should still operate only with ApproveForAll
