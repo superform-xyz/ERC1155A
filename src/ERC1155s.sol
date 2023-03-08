@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.17;
+pragma solidity 0.8.19;
 
 import {ERC1155} from "solmate/tokens/ERC1155.sol";
 
-contract ERC1155s is ERC1155 {
+abstract contract ERC1155s is ERC1155 {
     event ApprovalForOne(
         address indexed owner,
         address indexed operator,
@@ -27,6 +27,8 @@ contract ERC1155s is ERC1155 {
     /// @notice Introducing single approve through "optionality"
     /// This function will only accept single-approved Ids and fail for everything else
     /// Caller is expected to know which function to call, worse that can happen is revert
+    /// BatchTransfer should still operate only with ApproveForAll
+    /// Checking for set of approvals makes intended use of batch transfer pointless
     function _safeTransferFrom(
         address from,
         address to,
@@ -34,7 +36,10 @@ contract ERC1155s is ERC1155 {
         uint256 amount,
         bytes calldata data
     ) public virtual {
-        require(msg.sender == from || allowance[from][msg.sender][id] >= amount, "NOT_AUTHORIZED");
+        require(
+            msg.sender == from || allowance[from][msg.sender][id] >= amount,
+            "NOT_AUTHORIZED"
+        );
         balanceOf[from][id] -= amount;
         balanceOf[to][id] += amount;
 
@@ -54,33 +59,48 @@ contract ERC1155s is ERC1155 {
         );
     }
 
-    /// @notice This won't work for SuperForm's cross-chain Vaults
-    /// We can't make cross-chain calls to Vaults public variables/getters
-    /// URI should be return address of off-chain hosted Vault data
-    /// Could work fine with MultiVault
-    function uri(uint256 id) public view virtual override returns (string memory) {}
+    ///////////////////////////////////////////////////////////////////////////
+    ///                        METADATA SECTION                             ///
+    ///////////////////////////////////////////////////////////////////////////
 
-    /// @notice More costly option, preserves expected ERC1155 interface & behavior
-    /// Condition checking makes this ERC1155 impl more costly for everybody
-    /// NOTE: Is this use-case for try/catch in solidity? Is it cheaper?
-    // function safeTransferFrom(
-    //     address from,
-    //     address to,
-    //     uint256 id,
-    //     uint256 amount,
-    //     bytes calldata data
-    // ) public virtual override {
-    //     if (msg.sender == from || isApprovedForAll[from][msg.sender]) {
-    //         _safeTransferFrom(from, to, id, amount, data);
-    //     } else if (
-    //         msg.sender == from || allowance[from][msg.sender][id] >= amount
-    //     ) {
-    //         _safeTransferFrom(from, to, id, amount, data);
-    //     }
-    // }
+    /// @dev See {IERC721Metadata-tokenURI}.
+    /// compute return string from baseURI set for this contract and unique vaultId
+    function uri(uint256 vaultId)
+        public
+        view
+        virtual
+        override
+        returns (string memory)
+    {
+        return string(abi.encodePacked(_baseURI(), toString(vaultId)));
+    }
 
-    /// @notice BatchTransfer should still operate only with ApproveForAll
-    /// Checking for set of approvals makes intended use of batch transfer pointless
+    /// @dev used to construct return url
+    /// NOTE: add setter?
+    function _baseURI() internal pure returns (string memory) {
+        return "https://api.superform.xyz/superposition/";
+    }
+
+    /// Inspired by OraclizeAPI's implementation - MIT licence
+    /// https://github.com/oraclize/ethereum-api/blob/b42146b063c7d6ee1358846c198246239e9360e8/oraclizeAPI_0.4.25.sol
+    function toString(uint256 value) internal pure returns (string memory) {
+        if (value == 0) {
+            return "0";
+        }
+        uint256 temp = value;
+        uint256 digits;
+        while (temp != 0) {
+            digits++;
+            temp /= 10;
+        }
+        bytes memory buffer = new bytes(digits);
+        while (value != 0) {
+            digits -= 1;
+            buffer[digits] = bytes1(uint8(48 + uint256(value % 10)));
+            value /= 10;
+        }
+        return string(buffer);
+    }
 }
 
 /// @notice A generic interface for a contract which properly accepts ERC1155 tokens.
