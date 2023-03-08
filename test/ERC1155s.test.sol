@@ -61,4 +61,11 @@ contract ERC1155s__Test is Test {
         /// bob still can't transfer single approve id
         SuperShares._safeTransferFrom(alice, bob, 1, allowAmount, "");
     }
+
+    function testTokenURI() public {
+        string memory url = "https://api.superform.xyz/superposition/1";
+        string memory returned = SuperShares.uri(1);
+        console.log("uri value for vaultId 1", returned);
+        assertEq(url, returned);
+    }
 }
