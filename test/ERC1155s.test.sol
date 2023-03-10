@@ -72,23 +72,23 @@ contract ERC1155s__Test is Test {
         assertEq(bobUpdatedAllowance, 0);
     }
 
-    // function testIncreaseAllowance() public {
-    //     uint256 allowAmount = (THOUSAND_E18 / 2);
+    function testIncreaseAllowance() public {
+        uint256 allowAmount = (THOUSAND_E18 / 2);
 
-    //     vm.prank(alice);
-    //     /// alice approves 100 of id 1 to bob
-    //     SuperShares.setApprovalForOne(bob, 1, allowAmount);
+        vm.prank(alice);
+        /// alice approves 100 of id 1 to bob
+        SuperShares.setApprovalForOne(bob, 1, allowAmount);
 
-    //     uint256 bobMaxAllowance = SuperShares.allowance(alice, bob, 1);
-    //     assertEq(bobMaxAllowance, allowAmount);
+        uint256 bobMaxAllowance = SuperShares.allowance(alice, bob, 1);
+        assertEq(bobMaxAllowance, allowAmount);
 
-    //     vm.prank(bob);
-    //     /// bob transfers full allowance amount
-    //     SuperShares.safeTransferFrom(alice, bob, 1, bobAllowance, "");
+        vm.prank(bob);
+        /// bob transfers full allowance amount
+        SuperShares.safeTransferFrom(alice, bob, 1, bobMaxAllowance, "");
 
-    //     uint256 bobBalance = SuperShares.balanceOf(bob, 1);
-    //     assertEq(bobBalance, bobAllowance);        
-    // }
+        uint256 bobBalance = SuperShares.balanceOf(bob, 1);
+        assertEq(bobBalance, bobMaxAllowance);        
+    }
 
     function testTokenURI() public {
         string memory url = "https://api.superform.xyz/superposition/1";
