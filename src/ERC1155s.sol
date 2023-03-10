@@ -3,6 +3,7 @@ pragma solidity 0.8.19;
 
 import {ERC1155} from "solmate/tokens/ERC1155.sol";
 import {Strings} from "openzeppelin-contracts/utils/Strings.sol";
+import "forge-std/console.sol";
 
 /**
  * @title ERC1155S
@@ -26,11 +27,69 @@ abstract contract ERC1155s is ERC1155 {
 
     /// @notice ERC20-like mapping for single id approvals
     mapping(address owner => mapping(address spender => mapping(uint256 id => uint256 amount)))
-        private _allowances;
+        private allowances;
+
+    ///////////////////////////////////////////////////////////////////////////
+    ///                     ERC1155-S LOGIC SECTION                         ///
+    ///////////////////////////////////////////////////////////////////////////
+
+    /// @notice Transfer singleApproved id with this function
+    /// @dev If user approvedForAll, function just executes. If it's singleApproved, function executes and reduces allowance
+    /// @dev BatchTransfer still operates only with ApproveForAll
+    /// @dev NOTE: EIP-1155 does not specify hot to handle approvals other than through isApprovedForAll
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 id,
+        uint256 amount,
+        bytes calldata data
+    ) public virtual override {
+        /// require caller of this function to be owner of balance from which we subtract OR caller is approvedForAll to take "from" balance
+        uint256 allowed = allowances[from][msg.sender][id];
+
+        require(
+            msg.sender == from ||
+                allowed >= allowance(from, to, id) ||
+                isApprovedForAll[from][msg.sender],
+            "NOT_AUTHORIZED"
+        );
+
+        if (isApprovedForAll[from][msg.sender] && allowed >= amount) {
+            console.log("isApprovedForAll");
+            decreaseAllowance(msg.sender, id, amount);
+        }
+
+        if (!isApprovedForAll[from][msg.sender] && allowed <= amount) {
+            console.log("isNotApprovedForAll");
+            _resetAllowance(from, msg.sender, id);
+        }
+
+        balanceOf[from][id] -= amount;
+        balanceOf[to][id] += amount;
+
+        emit TransferSingle(msg.sender, from, to, id, amount);
+
+        require(
+            to.code.length == 0
+                ? to != address(0)
+                : ERC1155TokenReceiver(to).onERC1155Received(
+                    msg.sender,
+                    from,
+                    id,
+                    amount,
+                    data
+                ) == ERC1155TokenReceiver.onERC1155Received.selector,
+            "UNSAFE_RECIPIENT"
+        );
+    }
 
     ///////////////////////////////////////////////////////////////////////////
     ///                     SIGNLE APPROVE SECTION                          ///
     ///////////////////////////////////////////////////////////////////////////
+
+    /// NOTE: https://eips.ethereum.org/EIPS/eip-1761 (suggested by 1155) - scope-based approvals
+    /// NOTE: Overwrite safeTransferFrom to not require setApprovalForAll
+    /// NOTE: Add positionSplitter to this set of contracts
 
     /// @notice Public function for setting single id approval
     /// @dev Works only with _safeTransferFrom() function
@@ -50,7 +109,7 @@ abstract contract ERC1155s is ERC1155 {
         address spender,
         uint256 id
     ) public view virtual returns (uint256) {
-        return _allowances[owner][spender][id];
+        return allowances[owner][spender][id];
     }
 
     /// @notice Public function for increasing single id approval amount
@@ -95,39 +154,14 @@ abstract contract ERC1155s is ERC1155 {
         return true;
     }
 
-    /// @notice Transfer singleApproved id with this function
-    /// @dev This function will only accept single-approved Ids and fail for everything else
-    /// @dev Caller is expected to know which function to call, worse that can happen is revert
-    /// @dev BatchTransfer should still operate only with ApproveForAll
-    /// @dev Checking for set of approvals makes intended use of batch transfer pointless
-    function _safeTransferFrom(
-        address from,
-        address to,
-        uint256 id,
-        uint256 amount,
-        bytes calldata data
-    ) public virtual {
-        require(
-            msg.sender == from || _allowances[from][msg.sender][id] >= amount,
-            "NOT_AUTHORIZED"
-        );
-        balanceOf[from][id] -= amount;
-        balanceOf[to][id] += amount;
-
-        emit TransferSingle(msg.sender, from, to, id, amount);
-
-        require(
-            to.code.length == 0
-                ? to != address(0)
-                : ERC1155TokenReceiver(to).onERC1155Received(
-                    msg.sender,
-                    from,
-                    id,
-                    amount,
-                    data
-                ) == ERC1155TokenReceiver.onERC1155Received.selector,
-            "UNSAFE_RECIPIENT"
-        );
+    function _resetAllowance(
+        address owner,
+        address spender,
+        uint256 id
+    ) internal virtual returns (bool) {
+        // address owner = msg.sender;
+        _setApprovalForOne(owner, spender, id, 0);
+        return true;
     }
 
     /// @notice Internal function for setting single id approval
@@ -140,7 +174,7 @@ abstract contract ERC1155s is ERC1155 {
     ) internal virtual {
         require(owner != address(0), "ERC20: approve from the zero address");
         require(spender != address(0), "ERC20: approve to the zero address");
-        _allowances[owner][spender][id] = amount;
+        allowances[owner][spender][id] = amount;
         emit ApprovalForOne(owner, spender, id, amount);
     }
 

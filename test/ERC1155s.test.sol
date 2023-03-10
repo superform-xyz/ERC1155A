@@ -16,10 +16,10 @@ contract ERC1155s__Test is Test {
     }
 
     /// Case 1: AllApproval + safeTransferFrom (standard 1155)
-    /// Case 2: SingleApproval + _safeTransferFrom (1155s) +++
-    /// Case 3: AllApproval + _safeTransferFrom (fails) +++
+    /// Case 2: SingleApproval + safeTransferFrom (1155s) +++
+    /// Case 3: AllApproval + safeTransferFrom (fails) +++
     /// Case 4: SingleApproval + safeTransferFrom (fails) +++
-    /// SingleApprove can only be used with _safeTransferFrom, approvals are separated
+    /// SingleApprove can only be used with safeTransferFrom, approvals are separated
 
     function testSetApprovalForOne() public {
         uint256 allowAmount = (THOUSAND_E18 / 2);
@@ -32,35 +32,63 @@ contract ERC1155s__Test is Test {
         assertEq(bobAllowance, allowAmount);
 
         vm.prank(bob);
-        /// bob can only transfer 500 of id 1 by calling specific function, _safeTransferFrom
-        SuperShares._safeTransferFrom(alice, bob, 1, bobAllowance, "");
+        /// bob can only transfer 500 of id 1 by calling specific function, safeTransferFrom
+        SuperShares.safeTransferFrom(alice, bob, 1, bobAllowance, "");
 
         uint256 bobBalance = SuperShares.balanceOf(bob, 1);
         assertEq(bobBalance, bobAllowance);
     }
 
-    function testFailApprovalForOne() public {
+    function testApprovalForAllWithTransferSingle() public {
         uint256 allowAmount = (THOUSAND_E18 / 2);
 
         vm.prank(alice);
-        SuperShares.setApprovalForOne(bob, 1, allowAmount);
-
-        vm.prank(bob);
-        /// bob can't transfer single approve id
-        SuperShares.safeTransferFrom(alice, bob, 1, allowAmount, "");
-    }
-
-    function testFailAllApprovalForOne() public {
-        uint256 allowAmount = (THOUSAND_E18 / 2);
-
-        vm.prank(alice);
-        /// alice approves everything for bob
         SuperShares.setApprovalForAll(bob, true);
 
         vm.prank(bob);
-        /// bob still can't transfer single approve id
-        SuperShares._safeTransferFrom(alice, bob, 1, allowAmount, "");
+        /// succeds because bob is approved for all
+        SuperShares.safeTransferFrom(alice, bob, 1, allowAmount, "");
     }
+
+    function testApprovalForAllWithTransferSingleReduceAllowances() public {
+        uint256 allowAmount = (THOUSAND_E18 / 2);
+        uint256 approveAmount = (THOUSAND_E18 / 4);
+
+        vm.prank(alice);
+        /// @dev Alice gives bob approval for 250 tokens
+        SuperShares.setApprovalForOne(bob, 1, approveAmount);
+        /// @dev Alice also gives bob approvalForAll the tokens
+        SuperShares.setApprovalForAll(bob, true);
+        ///  isApprovedForAll[msg.sender][operator] = approved;
+        /// @dev Bob _allowances is equal to 250 tokens
+        uint256 bobAllowance = SuperShares.allowance(alice, bob, 1);
+
+        vm.prank(bob);
+        /// @dev Bob transfers 500 tokens
+        SuperShares.safeTransferFrom(alice, bob, 1, allowAmount, "");
+
+        uint256 bobUpdatedAllowance = SuperShares.allowance(alice, bob, 1);
+        /// @dev Bob allowance is reduced to 0 (500 transfered from ApproveAll, 250 existing allowance)
+        assertEq(bobUpdatedAllowance, 0);
+    }
+
+    // function testIncreaseAllowance() public {
+    //     uint256 allowAmount = (THOUSAND_E18 / 2);
+
+    //     vm.prank(alice);
+    //     /// alice approves 100 of id 1 to bob
+    //     SuperShares.setApprovalForOne(bob, 1, allowAmount);
+
+    //     uint256 bobMaxAllowance = SuperShares.allowance(alice, bob, 1);
+    //     assertEq(bobMaxAllowance, allowAmount);
+
+    //     vm.prank(bob);
+    //     /// bob transfers full allowance amount
+    //     SuperShares.safeTransferFrom(alice, bob, 1, bobAllowance, "");
+
+    //     uint256 bobBalance = SuperShares.balanceOf(bob, 1);
+    //     assertEq(bobBalance, bobAllowance);        
+    // }
 
     function testTokenURI() public {
         string memory url = "https://api.superform.xyz/superposition/1";
