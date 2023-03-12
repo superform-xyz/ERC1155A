@@ -33,10 +33,6 @@ abstract contract ERC1155s is ERC1155 {
     ///                     ERC1155-S LOGIC SECTION                         ///
     ///////////////////////////////////////////////////////////////////////////
 
-    /// @notice Transfer singleApproved id with this function
-    /// @dev If user approvedForAll, function just executes. If it's singleApproved, function executes and reduces allowance
-    /// @dev BatchTransfer still operates only with ApproveForAll
-    /// @dev NOTE: EIP-1155 does not specify hot to handle approvals other than through isApprovedForAll
     function safeTransferFrom(
         address from,
         address to,
@@ -44,26 +40,35 @@ abstract contract ERC1155s is ERC1155 {
         uint256 amount,
         bytes calldata data
     ) public virtual override {
-        /// require caller of this function to be owner of balance from which we subtract OR caller is approvedForAll to take "from" balance
-        uint256 allowed = allowances[from][msg.sender][id];
+        address operator = msg.sender;
+        uint256 allowed = allowances[from][operator][id];
 
-        require(
-            msg.sender == from ||
-                allowed >= allowance(from, to, id) ||
-                isApprovedForAll[from][msg.sender],
-            "NOT_AUTHORIZED"
-        );
-
-        if (isApprovedForAll[from][msg.sender] && allowed >= amount) {
-            console.log("isApprovedForAll");
-            decreaseAllowance(msg.sender, id, amount);
+        if (operator == from) {
+            _safeTransferFrom(from, to, id, amount, data);
+        } else if (allowed >= amount) {
+            if (isApprovedForAll[from][operator]) {
+                decreaseAllowance(operator, id, amount);
+            }
+            _safeTransferFrom(from, to, id, amount, data);
+        } else if (isApprovedForAll[from][operator]) {
+            if (allowed >= amount) {
+                decreaseAllowance(operator, id, amount);
+            } else if (allowed < amount) {
+                _resetAllowance(from, operator, id);
+            }
+            _safeTransferFrom(from, to, id, amount, data);
+        } else {
+            revert("NOT_AUTHORIZED");
         }
+    }
 
-        if (!isApprovedForAll[from][msg.sender] && allowed <= amount) {
-            console.log("isNotApprovedForAll");
-            _resetAllowance(from, msg.sender, id);
-        }
-
+    function _safeTransferFrom(
+        address from,
+        address to,
+        uint256 id,
+        uint256 amount,
+        bytes calldata data
+    ) internal {
         balanceOf[from][id] -= amount;
         balanceOf[to][id] += amount;
 
@@ -82,6 +87,53 @@ abstract contract ERC1155s is ERC1155 {
             "UNSAFE_RECIPIENT"
         );
     }
+
+    /// @notice Transfer singleApproved id with this function
+    /// @dev If user approvedForAll, function just executes.
+    /// @dev If it's singleApproved, function executes and reduces allowance
+    /// @dev If it's approvedForAll and singleApproved, function executes and reduces allowance
+    /// @dev Overflow on difference between approvedForAll and singleApproved amounts is set to 0
+    /// @dev Therefore, approvedForAll amount is always senior to singleApproved amount
+    // function safeTransferFrom(
+    //     address from,
+    //     address to,
+    //     uint256 id,
+    //     uint256 amount,
+    //     bytes calldata data
+    // ) public virtual override {
+    //     require(
+    //         msg.sender == from ||
+    //             (allowance(from, msg.sender, id) >= amount) ||
+    //             isApprovedForAll[from][msg.sender],
+    //         "NOT_AUTHORIZED"
+    //     );
+
+    //     uint256 allowed = allowances[from][msg.sender][id];
+
+    //     if (isApprovedForAll[from][msg.sender] && allowed >= amount)
+    //         decreaseAllowance(msg.sender, id, amount);
+
+    //     if (!isApprovedForAll[from][msg.sender] && allowed <= amount)
+    //         _resetAllowance(from, msg.sender, id);
+
+    //     balanceOf[from][id] -= amount;
+    //     balanceOf[to][id] += amount;
+
+    //     emit TransferSingle(msg.sender, from, to, id, amount);
+
+    //     require(
+    //         to.code.length == 0
+    //             ? to != address(0)
+    //             : ERC1155TokenReceiver(to).onERC1155Received(
+    //                 msg.sender,
+    //                 from,
+    //                 id,
+    //                 amount,
+    //                 data
+    //             ) == ERC1155TokenReceiver.onERC1155Received.selector,
+    //         "UNSAFE_RECIPIENT"
+    //     );
+    // }
 
     ///////////////////////////////////////////////////////////////////////////
     ///                     SIGNLE APPROVE SECTION                          ///
@@ -154,12 +206,13 @@ abstract contract ERC1155s is ERC1155 {
         return true;
     }
 
+    /// @notice Set given id allowance to 0
+    /// @dev Required to coordinate allowance setting with approveAll functionality of ERC-1155
     function _resetAllowance(
         address owner,
         address spender,
         uint256 id
     ) internal virtual returns (bool) {
-        // address owner = msg.sender;
         _setApprovalForOne(owner, spender, id, 0);
         return true;
     }

@@ -4,7 +4,7 @@ pragma solidity 0.8.19;
 import "forge-std/Test.sol";
 import "../src/mocks/MockERC1155s.sol";
 
-contract ERC1155s__Test is Test {
+contract ERC1155STest is Test {
     MockERC1155s public SuperShares;
     uint256 public constant THOUSAND_E18 = 1000 ether;
     address public alice = address(0x2137);
@@ -15,24 +15,24 @@ contract ERC1155s__Test is Test {
         SuperShares.mint(alice, 1, THOUSAND_E18, "");
     }
 
-    /// Case 1: AllApproval + safeTransferFrom (standard 1155)
-    /// Case 2: SingleApproval + safeTransferFrom (1155s) +++
-    /// Case 3: AllApproval + safeTransferFrom (fails) +++
-    /// Case 4: SingleApproval + safeTransferFrom (fails) +++
-    /// SingleApprove can only be used with safeTransferFrom, approvals are separated
+    /// @dev All possible approval combinations for ERC1155S
+    /// Case 1: AllApproval + NO SingleApproval (standard 1155)
+    /// Case 2: AllApproval + SingleApproval (AllApproved tokens decrease SingleApprove too)
+    /// Case 3: SingleApproval + NO AllApproval (decrease SingleApprove allowance)
+    /// Case 4: SingleApproval + AllApproval (decreases SingleApprove allowance) +++
 
     function testSetApprovalForOne() public {
         uint256 allowAmount = (THOUSAND_E18 / 2);
 
         vm.prank(alice);
-        /// alice approves 500 of id 1 to bob
+        /// @dev alice approves 500 of id 1 to bob
         SuperShares.setApprovalForOne(bob, 1, allowAmount);
 
         uint256 bobAllowance = SuperShares.allowance(alice, bob, 1);
         assertEq(bobAllowance, allowAmount);
 
         vm.prank(bob);
-        /// bob can only transfer 500 of id 1 by calling specific function, safeTransferFrom
+        /// @dev bob can only transfer 500 of id 1 by calling specific function, safeTransferFrom
         SuperShares.safeTransferFrom(alice, bob, 1, bobAllowance, "");
 
         uint256 bobBalance = SuperShares.balanceOf(bob, 1);
@@ -46,7 +46,7 @@ contract ERC1155s__Test is Test {
         SuperShares.setApprovalForAll(bob, true);
 
         vm.prank(bob);
-        /// succeds because bob is approved for all
+        /// @dev succeds because bob is approved for all
         SuperShares.safeTransferFrom(alice, bob, 1, allowAmount, "");
     }
 
@@ -54,16 +54,17 @@ contract ERC1155s__Test is Test {
         uint256 allowAmount = (THOUSAND_E18 / 2);
         uint256 approveAmount = (THOUSAND_E18 / 4);
 
-        vm.prank(alice);
+        vm.startPrank(alice);
         /// @dev Alice gives bob approval for 250 tokens
         SuperShares.setApprovalForOne(bob, 1, approveAmount);
         /// @dev Alice also gives bob approvalForAll the tokens
         SuperShares.setApprovalForAll(bob, true);
+        vm.stopPrank();
         ///  isApprovedForAll[msg.sender][operator] = approved;
         /// @dev Bob _allowances is equal to 250 tokens
         uint256 bobAllowance = SuperShares.allowance(alice, bob, 1);
 
-        vm.prank(bob);
+        vm.startPrank(bob);
         /// @dev Bob transfers 500 tokens
         SuperShares.safeTransferFrom(alice, bob, 1, allowAmount, "");
 
@@ -76,14 +77,14 @@ contract ERC1155s__Test is Test {
         uint256 allowAmount = (THOUSAND_E18 / 2);
 
         vm.prank(alice);
-        /// alice approves 100 of id 1 to bob
+        /// @dev alice approves 100 of id 1 to bob
         SuperShares.setApprovalForOne(bob, 1, allowAmount);
 
         uint256 bobMaxAllowance = SuperShares.allowance(alice, bob, 1);
         assertEq(bobMaxAllowance, allowAmount);
 
         vm.prank(bob);
-        /// bob transfers full allowance amount
+        /// @dev bob transfers full allowance amount
         SuperShares.safeTransferFrom(alice, bob, 1, bobMaxAllowance, "");
 
         uint256 bobBalance = SuperShares.balanceOf(bob, 1);
@@ -93,7 +94,6 @@ contract ERC1155s__Test is Test {
     function testTokenURI() public {
         string memory url = "https://api.superform.xyz/superposition/1";
         string memory returned = SuperShares.uri(1);
-        console.log("uri value for vaultId 1", returned);
         assertEq(url, returned);
     }
 }

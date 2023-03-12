@@ -1,24 +1,19 @@
-# ERC-1155s - Opinionated ERC-1155 Extension
+# ERC-1155s - SuperForm's ERC-1155 Extension
+
+SuperForm implementation of ERC-1155 with extended approval logic. Allows token owners to execute single id approvals in place of mass approving all of the ERC-1155 ids to the spender.
 
 You need foundry/forge to run repository.
 
-`make install` && `make build` && `make test`
+`forge install`
 
-# Features
+`forge test`
 
-- `setApprovalForOne()` - approve only specific ERC-1155 id
-- `_safeTransferFrom()` - notice underscore, separate function for single-approved transfers
-
-Standard implementation of ERC1155 is kept. `setApprovalForAll()` can be used and does not collide with single id approvals. That is because we expect caller to know what _transfer function_ he needs to call. 
+Two set of tests are run. `ERC-1155s` specific and general `ERC-1155` tests forked from solmate's implementation of the standard. SuperForm's `ERC-1155s` has exactly the same interface as standard `ERC-1155` and expected behavior of functions follow EIP documentation. 
 
 # Rationale
 
 ERC1155 `setApprovalForAll` function gives full spending permissions over all currently exisiting and future Ids. Addition of single Id approve, allows this token standard to improve composability through more open access control (*to funds). If external contract is an expected spender of a ERC1155 Id, there is no reason it should have access to all the user owned Ids. 
 
-# Security concerns
+# Implementation Details
 
-Approval race condition? It is possible to double-approve two separate address for same amount and id, something not possible in ERC20 or ERC721.
-
-# SharesSplitter (idea)
-
-Move wrap() and unwrap() functions to ERC1155s? Saving transfer call and locking amount of id internally. 
+Main change is how `ERC-1155s` implements `safeTransferFrom()` function. Standard ERC-115 implementations are checking only if caller `isApprovedForAll` or the owner of tokens being transfered. We propose `setApprovalForOne()` function to allow granting approval for specific ERC-1155 id in arbitrary amount. Therefore, owner is no longer required to mass approve all of his token ids. The side effect of it is requirement of additional validation logic inside of `safeTransferFrom()` function. 
