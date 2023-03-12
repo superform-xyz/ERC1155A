@@ -60,7 +60,6 @@ contract ERC1155STest is Test {
         /// @dev Alice also gives bob approvalForAll the tokens
         SuperShares.setApprovalForAll(bob, true);
         vm.stopPrank();
-        ///  isApprovedForAll[msg.sender][operator] = approved;
         /// @dev Bob _allowances is equal to 250 tokens
         uint256 bobAllowance = SuperShares.allowance(alice, bob, 1);
 
@@ -71,6 +70,30 @@ contract ERC1155STest is Test {
         uint256 bobUpdatedAllowance = SuperShares.allowance(alice, bob, 1);
         /// @dev Bob allowance is reduced to 0 (500 transfered from ApproveAll, 250 existing allowance)
         assertEq(bobUpdatedAllowance, 0);
+    }
+
+    function testSafeBatchTransferFrom() public {
+        uint256 allowAmount = (THOUSAND_E18 / 2);
+        uint256[] memory ids = new uint256[](4);
+        uint256[] memory amounts = new uint256[](4);
+        ids[0] = 2;
+        ids[1] = 3;
+        ids[2] = 4;
+        ids[3] = 5;
+        amounts[0] = allowAmount;
+        amounts[1] = allowAmount;
+        amounts[2] = allowAmount;
+        amounts[3] = allowAmount;
+
+
+        vm.startPrank(alice);
+        SuperShares.batchMint(alice, ids, amounts, "");
+        SuperShares.setApprovalForAll(bob, true);
+        vm.stopPrank();
+
+        vm.startPrank(bob);        
+        SuperShares.safeBatchTransferFrom(alice, bob, ids, amounts, "");
+
     }
 
     function testIncreaseAllowance() public {

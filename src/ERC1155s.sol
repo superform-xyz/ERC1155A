@@ -33,6 +33,13 @@ abstract contract ERC1155s is ERC1155 {
     ///                     ERC1155-S LOGIC SECTION                         ///
     ///////////////////////////////////////////////////////////////////////////
 
+    /// @notice Transfer singleApproved id with this function
+    /// @dev If caller is owner of ids, transfer just executes.
+    /// @dev If caller singleApproved > transferAmount, function executes and reduces allowance
+    /// @dev If caller singleApproved < transferAmount && isApprovedForAll, function executes and resets allowance
+    /// @dev If caller approvedForAll, function just executes and decresease or resets allowance
+    /// @dev Overflow on difference between approvedForAll and singleApproved amounts is set to 0
+    /// @dev Therefore, approvedForAll amount is always senior to singleApproved amount
     function safeTransferFrom(
         address from,
         address to,
@@ -43,25 +50,88 @@ abstract contract ERC1155s is ERC1155 {
         address operator = msg.sender;
         uint256 allowed = allowances[from][operator][id];
 
+        /// @dev operator is an owner of ids
         if (operator == from) {
             _safeTransferFrom(from, to, id, amount, data);
+        
+        /// @dev operator allowance is higher than requested amount
         } else if (allowed >= amount) {
+        
+            /// @dev operator also has approvedForAll flag ON
             if (isApprovedForAll[from][operator]) {
+                /// @dev we already know that allowed >= amount it won't overflow
                 decreaseAllowance(operator, id, amount);
             }
+        
+            /// @dev make transfer
             _safeTransferFrom(from, to, id, amount, data);
+        
+        /// @dev operator is approved for all tokens
         } else if (isApprovedForAll[from][operator]) {
+
+            /// @dev operator allowance is higher than requested amount, we reduce allowance
             if (allowed >= amount) {
                 decreaseAllowance(operator, id, amount);
+                /// @dev operator allowance is lower than requested amount, we reset allowance to not overflow
             } else if (allowed < amount) {
                 _resetAllowance(from, operator, id);
             }
+
+            /// @dev make transfer
             _safeTransferFrom(from, to, id, amount, data);
+
+        /// @dev operator is not an owner of ids, he has not enough of allowance and is not approvedForAll
         } else {
             revert("NOT_AUTHORIZED");
         }
     }
 
+    /// @notice Transfer batch of ids together with this function
+    /// @dev Executes approval logic of safeTransferFrom inside of a for loop
+    /// NOTE: Should use its own internal _safeTransferFrom because of events emitted
+    function safeBatchTransferFrom(
+        address from,
+        address to,
+        uint256[] calldata ids,
+        uint256[] calldata amounts,
+        bytes calldata data
+    ) public virtual override {
+        /// @dev Only validate lenghts of arrays here, allowance checks happen on the single id level
+        require(ids.length == amounts.length, "LENGTH_MISMATCH");
+
+        uint256 id;
+        uint256 amount;
+
+        for (uint256 i = 0; i < ids.length; ) {
+            id = ids[i];
+            amount = amounts[i];
+
+            /// @dev All checks happen here
+            safeTransferFrom(from, to, id, amount, data);
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        emit TransferBatch(msg.sender, from, to, ids, amounts);
+
+        require(
+            to.code.length == 0
+                ? to != address(0)
+                : ERC1155TokenReceiver(to).onERC1155BatchReceived(
+                    msg.sender,
+                    from,
+                    ids,
+                    amounts,
+                    data
+                ) == ERC1155TokenReceiver.onERC1155BatchReceived.selector,
+            "UNSAFE_RECIPIENT"
+        );
+    }
+
+    /// @notice Internal safeTranferFrom function called after all checks pass
+    /// @dev Both safeTransferFrom and safeBatchTransferFrom calls end here
     function _safeTransferFrom(
         address from,
         address to,
@@ -87,53 +157,6 @@ abstract contract ERC1155s is ERC1155 {
             "UNSAFE_RECIPIENT"
         );
     }
-
-    /// @notice Transfer singleApproved id with this function
-    /// @dev If user approvedForAll, function just executes.
-    /// @dev If it's singleApproved, function executes and reduces allowance
-    /// @dev If it's approvedForAll and singleApproved, function executes and reduces allowance
-    /// @dev Overflow on difference between approvedForAll and singleApproved amounts is set to 0
-    /// @dev Therefore, approvedForAll amount is always senior to singleApproved amount
-    // function safeTransferFrom(
-    //     address from,
-    //     address to,
-    //     uint256 id,
-    //     uint256 amount,
-    //     bytes calldata data
-    // ) public virtual override {
-    //     require(
-    //         msg.sender == from ||
-    //             (allowance(from, msg.sender, id) >= amount) ||
-    //             isApprovedForAll[from][msg.sender],
-    //         "NOT_AUTHORIZED"
-    //     );
-
-    //     uint256 allowed = allowances[from][msg.sender][id];
-
-    //     if (isApprovedForAll[from][msg.sender] && allowed >= amount)
-    //         decreaseAllowance(msg.sender, id, amount);
-
-    //     if (!isApprovedForAll[from][msg.sender] && allowed <= amount)
-    //         _resetAllowance(from, msg.sender, id);
-
-    //     balanceOf[from][id] -= amount;
-    //     balanceOf[to][id] += amount;
-
-    //     emit TransferSingle(msg.sender, from, to, id, amount);
-
-    //     require(
-    //         to.code.length == 0
-    //             ? to != address(0)
-    //             : ERC1155TokenReceiver(to).onERC1155Received(
-    //                 msg.sender,
-    //                 from,
-    //                 id,
-    //                 amount,
-    //                 data
-    //             ) == ERC1155TokenReceiver.onERC1155Received.selector,
-    //         "UNSAFE_RECIPIENT"
-    //     );
-    // }
 
     ///////////////////////////////////////////////////////////////////////////
     ///                     SIGNLE APPROVE SECTION                          ///
