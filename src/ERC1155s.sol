@@ -3,7 +3,6 @@ pragma solidity 0.8.19;
 
 import {ERC1155} from "solmate/tokens/ERC1155.sol";
 import {Strings} from "openzeppelin-contracts/utils/Strings.sol";
-import "forge-std/console.sol";
 
 /**
  * @title ERC1155S
@@ -49,48 +48,39 @@ abstract contract ERC1155s is ERC1155 {
         address operator = msg.sender;
         uint256 allowed = allowances[from][operator][id];
 
+        /// NOTE: This function order makes it more costly to use isApprovedForAll but cheaper to user single approval and owner transfer
+
         /// @dev operator is an owner of ids
         if (operator == from) {
+
+            /// @dev make transfer
             _safeTransferFrom(operator, from, to, id, amount, data);
-        
+
         /// @dev operator allowance is higher than requested amount
         } else if (allowed >= amount) {
-        
-            /// @dev operator also has approvedForAll flag ON
-            if (isApprovedForAll[from][operator]) {
-                /// @dev we already know that allowed >= amount it won't overflow
-                decreaseAllowance(operator, id, amount);
-            }
-        
             /// @dev make transfer
+            _decreaseAllowance(from, operator, id, amount);
             _safeTransferFrom(operator, from, to, id, amount, data);
-        
+
         /// @dev operator is approved for all tokens
-        /// NOTE: Considering high trust in safeBatchTransferFrom, we could drop allowance adjustments here
         } else if (isApprovedForAll[from][operator]) {
-
-            /// @dev operator allowance is higher than requested amount, we reduce allowance
-            if (allowed >= amount) {
-                decreaseAllowance(operator, id, amount);
-                /// @dev operator allowance is lower than requested amount, we reset allowance to not overflow
-            } else if (allowed < amount) {
-                _resetAllowance(from, operator, id);
-            }
+            /// NOTE: We don't decrease individual allowance here.
+            /// NOTE: Spender effectively has unlimited allowance because of isApprovedForAll
+            /// NOTE: We leave allowance management to token owners
 
             /// @dev make transfer
             _safeTransferFrom(operator, from, to, id, amount, data);
 
-        /// @dev operator is not an owner of ids, he has not enough of allowance and is not approvedForAll
+        /// @dev operator is not an owner of ids or not enough of allowance, or is not approvedForAll
         } else {
             revert("NOT_AUTHORIZED");
         }
     }
 
     /// @notice Transfer batch of ids with this function
-    /// @dev Overrides single id approvals. Works only with setApprovalForAll.
+    /// @dev Ignores single id approvals. Works only with setApprovalForAll.
     /// @dev Assumption is that BatchTransfers are supposed to be gas-efficient
-    /// @dev Assumption is that ApprovedForAll operator is also trusted with arbitrary allowance amount
-    /// @dev Owners should manage their approvals themselves
+    /// @dev Assumption is that ApprovedForAll operator is also trusted for any other allowance amount existing as singleApprove
     /// NOTE: Additional option may be range-based approvals
     function safeBatchTransferFrom(
         address from,
@@ -101,7 +91,10 @@ abstract contract ERC1155s is ERC1155 {
     ) public virtual override {
         require(ids.length == amounts.length, "LENGTH_MISMATCH");
 
-        require(msg.sender == from || isApprovedForAll[from][msg.sender], "NOT_AUTHORIZED");
+        require(
+            msg.sender == from || isApprovedForAll[from][msg.sender],
+            "NOT_AUTHORIZED"
+        );
 
         // Storing these outside the loop saves ~15 gas per iteration.
         uint256 id;
@@ -126,8 +119,13 @@ abstract contract ERC1155s is ERC1155 {
         require(
             to.code.length == 0
                 ? to != address(0)
-                : ERC1155TokenReceiver(to).onERC1155BatchReceived(msg.sender, from, ids, amounts, data) ==
-                    ERC1155TokenReceiver.onERC1155BatchReceived.selector,
+                : ERC1155TokenReceiver(to).onERC1155BatchReceived(
+                    msg.sender,
+                    from,
+                    ids,
+                    amounts,
+                    data
+                ) == ERC1155TokenReceiver.onERC1155BatchReceived.selector,
             "UNSAFE_RECIPIENT"
         );
     }
@@ -157,16 +155,11 @@ abstract contract ERC1155s is ERC1155 {
                 ) == ERC1155TokenReceiver.onERC1155Received.selector,
             "UNSAFE_RECIPIENT"
         );
-
     }
 
     ///////////////////////////////////////////////////////////////////////////
     ///                     SIGNLE APPROVE SECTION                          ///
     ///////////////////////////////////////////////////////////////////////////
-
-    /// NOTE: https://eips.ethereum.org/EIPS/eip-1761 (suggested by 1155) - scope-based approvals
-    /// NOTE: Overwrite safeTransferFrom to not require setApprovalForAll
-    /// NOTE: Add positionSplitter to this set of contracts
 
     /// @notice Public function for setting single id approval
     /// @dev Works only with _safeTransferFrom() function
@@ -231,14 +224,29 @@ abstract contract ERC1155s is ERC1155 {
         return true;
     }
 
-    /// @notice Set given id allowance to 0
-    /// @dev Required to coordinate allowance setting with approveAll functionality of ERC-1155
-    function _resetAllowance(
+    /// @notice Internal function for decreasing single id approval amount
+    /// @dev Only to be used by address(this)
+    /// @dev Re-adapted from ERC20
+    function _decreaseAllowance(
         address owner,
         address spender,
-        uint256 id
+        uint256 id,
+        uint256 subtractedValue
     ) internal virtual returns (bool) {
-        _setApprovalForOne(owner, spender, id, 0);
+        uint256 currentAllowance = allowance(owner, spender, id);
+        require(
+            currentAllowance >= subtractedValue,
+            "ERC20: decreased allowance below zero"
+        );
+        unchecked {
+            _setApprovalForOne(
+                owner,
+                spender,
+                id,
+                currentAllowance - subtractedValue
+            );
+        }
+
         return true;
     }
 
@@ -271,7 +279,7 @@ abstract contract ERC1155s is ERC1155 {
 
     /// @notice Used to construct return url
     /// NOTE: add setter?
-    function _baseURI() internal pure returns (string memory) {
+    function _baseURI() internal pure virtual returns (string memory) {
         return "https://api.superform.xyz/superposition/";
     }
 }

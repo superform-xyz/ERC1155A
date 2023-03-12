@@ -50,7 +50,7 @@ contract ERC1155STest is Test {
         SuperShares.safeTransferFrom(alice, bob, 1, allowAmount, "");
     }
 
-    function testApprovalForAllWithTransferSingleReduceAllowances() public {
+    function testApprovalForAllPriority() public {
         uint256 allowAmount = (THOUSAND_E18 / 2);
         uint256 approveAmount = (THOUSAND_E18 / 4);
 
@@ -67,13 +67,14 @@ contract ERC1155STest is Test {
         /// @dev Bob transfers 500 tokens
         SuperShares.safeTransferFrom(alice, bob, 1, allowAmount, "");
 
-        uint256 bobUpdatedAllowance = SuperShares.allowance(alice, bob, 1);
-        /// @dev Bob allowance is reduced to 0 (500 transfered from ApproveAll, 250 existing allowance)
-        assertEq(bobUpdatedAllowance, 0);
+        /// @dev Bob allowances are not update because alice is already max approving bob for all tokens
+        assertEq(bobAllowance, approveAmount);
+
     }
 
     function testSafeBatchTransferFrom() public {
         uint256 allowAmount = (THOUSAND_E18 / 2);
+        
         uint256[] memory ids = new uint256[](4);
         uint256[] memory amounts = new uint256[](4);
         ids[0] = 2;
@@ -96,7 +97,7 @@ contract ERC1155STest is Test {
 
     }
 
-    function testIncreaseAllowance() public {
+    function testSingleAllowance() public {
         uint256 allowAmount = (THOUSAND_E18 / 2);
 
         vm.prank(alice);
@@ -112,6 +113,28 @@ contract ERC1155STest is Test {
 
         uint256 bobBalance = SuperShares.balanceOf(bob, 1);
         assertEq(bobBalance, bobMaxAllowance);        
+    }
+
+    function testSingleAllowanceIncrease() public {
+        uint256 allowAmount = (THOUSAND_E18 / 2);
+
+        vm.startPrank(alice);
+        /// @dev alice approves 50 of id 1 to bob
+        SuperShares.setApprovalForOne(bob, 1, allowAmount);
+
+        uint256 bobMaxAllowance = SuperShares.allowance(alice, bob, 1);
+        SuperShares.increaseAllowance(bob, 1, allowAmount);
+        assertEq(bobMaxAllowance, allowAmount);
+        
+        vm.stopPrank();
+        vm.prank(bob);
+        /// @dev bob transfers initial allowance amount, but not increased amount
+        SuperShares.safeTransferFrom(alice, bob, 1, bobMaxAllowance, "");
+        uint256 bobBalance = SuperShares.balanceOf(bob, 1);
+        assertEq(bobBalance, bobMaxAllowance);
+        uint256 bobExistingAllowance = SuperShares.allowance(alice, bob, 1);
+        /// @dev Bob still has 500 tokens to spend from increased allowance
+        assertEq(bobExistingAllowance, allowAmount);
     }
 
     function testTokenURI() public {

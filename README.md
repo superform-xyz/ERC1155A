@@ -12,11 +12,13 @@ Two set of tests are run. `ERC-1155s` specific and general `ERC-1155` tests fork
 
 # Rationale
 
-ERC1155 `setApprovalForAll` function gives full spending permissions over all currently exisiting and future Ids. Addition of single Id approve, allows this token standard to improve composability through more open access control (*to funds). If external contract is an expected spender of a ERC1155 Id, there is no reason it should have access to all the user owned Ids. 
+ERC1155 `setApprovalForAll` function gives full spending permissions over all currently exisiting and future Ids. Addition of single Id approve, allows this token standard to improve composability through more better allowance control of funds. If external contract is an expected to spend only a single ERC1155 id there is no reason it should have access to all the user owned ids. 
 
 # Implementation Details
 
-Main change is how `ERC-1155s` implements `safeTransferFrom()` function. Standard ERC-115 implementations are checking only if caller `isApprovedForAll` or the owner of tokens being transfered. We propose `setApprovalForOne()` function to allow granting approval for specific ERC-1155 id in arbitrary amount. Therefore, owner is no longer required to mass approve all of his token ids. The side effect of it is requirement of additional validation logic inside of `safeTransferFrom()` function.
+Main change is how `ERC-1155s` implements `safeTransferFrom()` function. Standard ERC-115 implementations are checking only if caller `isApprovedForAll` or an owner of token ids. We propose `setApprovalForOne()` function allowing approvals for specific id in any amount. Therefore, id owner is no longer required to mass approve all of his token ids. The side effect of it is requirement of additional validation logic inside of `safeTransferFrom()` function.
+
+With gas effiency in mind and preservation of expected ERC-1155 behavior, ERC-1155s still prioritizes `isApprovedForAll` over `setApprovalForOne()`. Only `safeTransferFrom()` function works with single allowances, `safeBatchTransferFrom()` function requires owner to grant `setApprovalForAll()` to the operator. Decision is dictated by a significant gas costs overhead when required to decrease (or reset, in case of an overflow) allowances for each id in array. Moreover, if owner has `setApprovalForAll()` set to `true`, ERC-1155s contract will not modify existing single allowances during `safeTransferFrom()` and `safeBatchTransferFrom()` - assuming that owner has full trust in *operator* for granting mass approve. Therefore, ERC-1155s requires owners to manage their allowances individually and be mindfull of enabling `setApprovalForAll()` for external contracts.
 
 ### Gas Overhead
 
@@ -25,10 +27,10 @@ Additional approval logic validation makes transfer operations more expensive. H
 ERC-1155S
 
 ```
-| safeBatchTransferFrom                            | 105081          | 105081 | 105081 | 105081 | 1       |
-| safeTransferFrom                                 | 27543           | 32887  | 33789  | 36428  | 4       |
-| setApprovalForAll                                | 24574           | 24574  | 24574  | 24574  | 3       |
-| setApprovalForOne                                | 24920           | 24920  | 24920  | 24920  | 3       |
+| safeBatchTransferFrom                            | 79432           | 79432 | 79432  | 79432 | 1       |
+| safeTransferFrom                                 | 27614           | 31069 | 31801  | 34517 | 5       |
+| setApprovalForAll                                | 24574           | 24574 | 24574  | 24574 | 3       |
+| setApprovalForOne                                | 24920           | 24920 | 24920  | 24920 | 4       |
 ```
 
 ERC-1155
@@ -38,3 +40,9 @@ ERC-1155
 | safeTransferFrom                                          | 1072            | 34106  | 27191  | 183333  | 18      |
 | setApprovalForAll                                         | 4581            | 23615  | 24481  | 24481   | 23      |
 ```
+
+# Future Work
+
+TODO: https://eips.ethereum.org/EIPS/eip-1761 (suggested by 1155) - scope-based approvals
+
+TODO: Add SuperForm's PositionSplitter to this set of contracts
