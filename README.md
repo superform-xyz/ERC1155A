@@ -18,3 +18,7 @@ ERC1155 `setApprovalForAll` function gives full spending permissions over all cu
 # Security concerns
 
 Approval race condition? It is possible to double-approve two separate address for same amount and id, something not possible in ERC20 or ERC721.
+
+# SharesSplitter (idea)
+
+Move wrap() and unwrap() functions to ERC1155s? Saving transfer call and locking amount of id internally. 

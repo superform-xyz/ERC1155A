@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.17;
+/// SPDX-License-Identifier: Apache-2.0
+pragma solidity 0.8.19;
 
 import "forge-std/Test.sol";
 import "../src/mocks/MockERC1155s.sol";
@@ -60,5 +60,12 @@ contract ERC1155s__Test is Test {
         vm.prank(bob);
         /// bob still can't transfer single approve id
         SuperShares._safeTransferFrom(alice, bob, 1, allowAmount, "");
+    }
+
+    function testTokenURI() public {
+        string memory url = "https://api.superform.xyz/superposition/1";
+        string memory returned = SuperShares.uri(1);
+        console.log("uri value for vaultId 1", returned);
+        assertEq(url, returned);
     }
 }
