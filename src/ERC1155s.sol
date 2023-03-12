@@ -11,7 +11,6 @@ import "forge-std/console.sol";
  * 1. Single id approve capability
  *    - Set approve for single id for specified amount
  *    - Use safeTransferFrom() for regular allApproved ids
- *    - Use _safeTransferFrom() for extended singleApproved id
  * Using standard ERC1155 setApprovalForAll overrides setApprovalForOne
  * 2. Metadata build out of baseURI and vaultId uint value into https address
  */
@@ -52,7 +51,7 @@ abstract contract ERC1155s is ERC1155 {
 
         /// @dev operator is an owner of ids
         if (operator == from) {
-            _safeTransferFrom(from, to, id, amount, data);
+            _safeTransferFrom(operator, from, to, id, amount, data);
         
         /// @dev operator allowance is higher than requested amount
         } else if (allowed >= amount) {
@@ -64,9 +63,10 @@ abstract contract ERC1155s is ERC1155 {
             }
         
             /// @dev make transfer
-            _safeTransferFrom(from, to, id, amount, data);
+            _safeTransferFrom(operator, from, to, id, amount, data);
         
         /// @dev operator is approved for all tokens
+        /// NOTE: Considering high trust in safeBatchTransferFrom, we could drop allowance adjustments here
         } else if (isApprovedForAll[from][operator]) {
 
             /// @dev operator allowance is higher than requested amount, we reduce allowance
@@ -78,7 +78,7 @@ abstract contract ERC1155s is ERC1155 {
             }
 
             /// @dev make transfer
-            _safeTransferFrom(from, to, id, amount, data);
+            _safeTransferFrom(operator, from, to, id, amount, data);
 
         /// @dev operator is not an owner of ids, he has not enough of allowance and is not approvedForAll
         } else {
@@ -86,9 +86,12 @@ abstract contract ERC1155s is ERC1155 {
         }
     }
 
-    /// @notice Transfer batch of ids together with this function
-    /// @dev Executes approval logic of safeTransferFrom inside of a for loop
-    /// NOTE: Should use its own internal _safeTransferFrom because of events emitted
+    /// @notice Transfer batch of ids with this function
+    /// @dev Overrides single id approvals. Works only with setApprovalForAll.
+    /// @dev Assumption is that BatchTransfers are supposed to be gas-efficient
+    /// @dev Assumption is that ApprovedForAll operator is also trusted with arbitrary allowance amount
+    /// @dev Owners should manage their approvals themselves
+    /// NOTE: Additional option may be range-based approvals
     function safeBatchTransferFrom(
         address from,
         address to,
@@ -96,9 +99,11 @@ abstract contract ERC1155s is ERC1155 {
         uint256[] calldata amounts,
         bytes calldata data
     ) public virtual override {
-        /// @dev Only validate lenghts of arrays here, allowance checks happen on the single id level
         require(ids.length == amounts.length, "LENGTH_MISMATCH");
 
+        require(msg.sender == from || isApprovedForAll[from][msg.sender], "NOT_AUTHORIZED");
+
+        // Storing these outside the loop saves ~15 gas per iteration.
         uint256 id;
         uint256 amount;
 
@@ -106,9 +111,11 @@ abstract contract ERC1155s is ERC1155 {
             id = ids[i];
             amount = amounts[i];
 
-            /// @dev All checks happen here
-            safeTransferFrom(from, to, id, amount, data);
+            balanceOf[from][id] -= amount;
+            balanceOf[to][id] += amount;
 
+            // An array can't have a total length
+            // larger than the max uint256 value.
             unchecked {
                 ++i;
             }
@@ -119,20 +126,15 @@ abstract contract ERC1155s is ERC1155 {
         require(
             to.code.length == 0
                 ? to != address(0)
-                : ERC1155TokenReceiver(to).onERC1155BatchReceived(
-                    msg.sender,
-                    from,
-                    ids,
-                    amounts,
-                    data
-                ) == ERC1155TokenReceiver.onERC1155BatchReceived.selector,
+                : ERC1155TokenReceiver(to).onERC1155BatchReceived(msg.sender, from, ids, amounts, data) ==
+                    ERC1155TokenReceiver.onERC1155BatchReceived.selector,
             "UNSAFE_RECIPIENT"
         );
     }
 
     /// @notice Internal safeTranferFrom function called after all checks pass
-    /// @dev Both safeTransferFrom and safeBatchTransferFrom calls end here
     function _safeTransferFrom(
+        address operator,
         address from,
         address to,
         uint256 id,
@@ -142,13 +144,12 @@ abstract contract ERC1155s is ERC1155 {
         balanceOf[from][id] -= amount;
         balanceOf[to][id] += amount;
 
-        emit TransferSingle(msg.sender, from, to, id, amount);
-
+        emit TransferSingle(operator, from, to, id, amount);
         require(
             to.code.length == 0
                 ? to != address(0)
                 : ERC1155TokenReceiver(to).onERC1155Received(
-                    msg.sender,
+                    operator,
                     from,
                     id,
                     amount,
@@ -156,6 +157,7 @@ abstract contract ERC1155s is ERC1155 {
                 ) == ERC1155TokenReceiver.onERC1155Received.selector,
             "UNSAFE_RECIPIENT"
         );
+
     }
 
     ///////////////////////////////////////////////////////////////////////////
