@@ -37,44 +37,56 @@ contract ERC1155STest is Test {
 
         uint256 bobBalance = SuperShares.balanceOf(bob, 1);
         assertEq(bobBalance, bobAllowance);
+
+        /// @dev allowance should decrease to 0
+        bobAllowance = SuperShares.allowance(alice, bob, 1);
+        assertEq(bobAllowance, 0);
     }
 
     function testApprovalForAllWithTransferSingle() public {
-        uint256 allowAmount = (THOUSAND_E18 / 2);
-
-        vm.prank(alice);
-        SuperShares.setApprovalForAll(bob, true);
-
-        vm.prank(bob);
-        /// @dev succeds because bob is approved for all
-        SuperShares.safeTransferFrom(alice, bob, 1, allowAmount, "");
-    }
-
-    function testApprovalForAllPriority() public {
-        uint256 allowAmount = (THOUSAND_E18 / 2);
-        uint256 approveAmount = (THOUSAND_E18 / 4);
+        uint256 transferAmount = (THOUSAND_E18 / 2);
+        uint256 allowSingle = (THOUSAND_E18 / 4);
 
         vm.startPrank(alice);
-        /// @dev Alice gives bob approval for 250 tokens
-        SuperShares.setApprovalForOne(bob, 1, approveAmount);
-        /// @dev Alice also gives bob approvalForAll the tokens
+
         SuperShares.setApprovalForAll(bob, true);
-        vm.stopPrank();
-        /// @dev Bob _allowances is equal to 250 tokens
+        /// @dev Set also approval for one, but smaller than (allowed >= amount) check
+        /// @dev We want transfer to execute using mass approval
+        /// @dev If we allow amount bigger than requested for transfer, safeTransferFrom will execute on single allowance
+        SuperShares.setApprovalForOne(bob, 1, allowSingle);
         uint256 bobAllowance = SuperShares.allowance(alice, bob, 1);
+        assertEq(bobAllowance, allowSingle);
+
+        vm.stopPrank();
 
         vm.startPrank(bob);
-        /// @dev Bob transfers 500 tokens
-        SuperShares.safeTransferFrom(alice, bob, 1, allowAmount, "");
 
-        /// @dev Bob allowances are not update because alice is already max approving bob for all tokens
-        assertEq(bobAllowance, approveAmount);
+        /// @dev succeds because bob is approved for all
+        SuperShares.safeTransferFrom(alice, bob, 1, transferAmount, "");
+        uint256 bobBalance = SuperShares.balanceOf(bob, 1);
+        assertEq(bobBalance, transferAmount);
+        /// @dev allowance unchanged because bob is approved for all
+        assertEq(bobAllowance, allowSingle);
+    }
 
+    function testFailNotEnoughSingleAllowance() public {
+        uint256 transferAmount = (THOUSAND_E18 / 2); /// 500
+        uint256 allowSingle = (THOUSAND_E18 / 4); /// 250
+
+        vm.startPrank(alice);
+        SuperShares.setApprovalForOne(bob, 1, allowSingle);
+        uint256 bobAllowance = SuperShares.allowance(alice, bob, 1);
+        assertEq(bobAllowance, allowSingle);
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+        /// @dev fails because bob is approved for all, but not enough allowance
+        SuperShares.safeTransferFrom(alice, bob, 1, transferAmount, "");
     }
 
     function testSafeBatchTransferFrom() public {
         uint256 allowAmount = (THOUSAND_E18 / 2);
-        
+
         uint256[] memory ids = new uint256[](4);
         uint256[] memory amounts = new uint256[](4);
         ids[0] = 2;
@@ -86,33 +98,13 @@ contract ERC1155STest is Test {
         amounts[2] = allowAmount;
         amounts[3] = allowAmount;
 
-
         vm.startPrank(alice);
         SuperShares.batchMint(alice, ids, amounts, "");
         SuperShares.setApprovalForAll(bob, true);
         vm.stopPrank();
 
-        vm.startPrank(bob);        
+        vm.startPrank(bob);
         SuperShares.safeBatchTransferFrom(alice, bob, ids, amounts, "");
-
-    }
-
-    function testSingleAllowance() public {
-        uint256 allowAmount = (THOUSAND_E18 / 2);
-
-        vm.prank(alice);
-        /// @dev alice approves 100 of id 1 to bob
-        SuperShares.setApprovalForOne(bob, 1, allowAmount);
-
-        uint256 bobMaxAllowance = SuperShares.allowance(alice, bob, 1);
-        assertEq(bobMaxAllowance, allowAmount);
-
-        vm.prank(bob);
-        /// @dev bob transfers full allowance amount
-        SuperShares.safeTransferFrom(alice, bob, 1, bobMaxAllowance, "");
-
-        uint256 bobBalance = SuperShares.balanceOf(bob, 1);
-        assertEq(bobBalance, bobMaxAllowance);        
     }
 
     function testSingleAllowanceIncrease() public {
@@ -125,7 +117,7 @@ contract ERC1155STest is Test {
         uint256 bobMaxAllowance = SuperShares.allowance(alice, bob, 1);
         SuperShares.increaseAllowance(bob, 1, allowAmount);
         assertEq(bobMaxAllowance, allowAmount);
-        
+
         vm.stopPrank();
         vm.prank(bob);
         /// @dev bob transfers initial allowance amount, but not increased amount

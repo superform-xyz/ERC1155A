@@ -6,17 +6,22 @@ import {Strings} from "openzeppelin-contracts/utils/Strings.sol";
 
 /// @notice For test purpouses we open mint()/burn() functions of ERC1155s
 contract MockERC1155s is ERC1155s {
-
     /// @dev See ../ERC1155s.sol
-    function uri(uint256 superFormId)
-        public
-        pure
-        override
-        returns (string memory)
-    {
-        return string(abi.encodePacked(_baseURI(), Strings.toString(superFormId)));
+    function uri(
+        uint256 superFormId
+    ) public pure override returns (string memory) {
+        return
+            string(abi.encodePacked(_baseURI(), Strings.toString(superFormId)));
     }
-    
+
+    function _baseURI() internal pure override returns (string memory) {
+        return "https://api.superform.xyz/superposition/";
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    ///                            MOCK SECTION                             ///
+    ///////////////////////////////////////////////////////////////////////////
+
     function mint(
         address to,
         uint256 id,
@@ -35,11 +40,7 @@ contract MockERC1155s is ERC1155s {
         _batchMint(to, ids, amounts, data);
     }
 
-    function burn(
-        address from,
-        uint256 id,
-        uint256 amount
-    ) public virtual {
+    function burn(address from, uint256 id, uint256 amount) public virtual {
         _burn(from, id, amount);
     }
 

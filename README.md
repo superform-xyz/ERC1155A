@@ -20,9 +20,29 @@ Main change is how `ERC-1155s` implements `safeTransferFrom()` function. Standar
 
 With gas effiency in mind and preservation of expected ERC-1155 behavior, ERC-1155s still prioritizes `isApprovedForAll` over `setApprovalForOne()`. Only `safeTransferFrom()` function works with single allowances, `safeBatchTransferFrom()` function requires owner to grant `setApprovalForAll()` to the operator. Decision is dictated by a significant gas costs overhead when required to decrease (or reset, in case of an overflow) allowances for each id in array. Moreover, if owner has `setApprovalForAll()` set to `true`, ERC-1155s contract will not modify existing single allowances during `safeTransferFrom()` and `safeBatchTransferFrom()` - assuming that owner has full trust in *operator* for granting mass approve. Therefore, ERC-1155s requires owners to manage their allowances individually and be mindfull of enabling `setApprovalForAll()` for external contracts.
 
+# Allowances Flow of Execution
+
+Case 1: AllApproval + NO SingleApproval (standard 1155)
+
+Case 2: AllApproval + SingleApproval *(smaller than amount requested for transfer)*
+
+Case 3: SingleApproval *(bigger than amount requested for transfer)* + AllApproval 
+
+Case 4: SingleApproval + NO AllApproval *(ERC20-like)*
+
+Therefore, the possible execution flow with two independent set of approvals is as follows:
+
+If caller is owner of ids, transfer just executes.
+ 
+If caller `singleApproved > transferAmount`, function executes and reduces allowance (even if setApproveForAll is true)
+
+If caller `singleApproved < transferAmount && isApprovedForAll`, function executes without reducing allowance (full trust assumed)
+
+If caller only approvedForAll, function executes without reducing allowance (full trust assumed)
+
 ### Gas Overhead
 
-Additional approval logic validation makes transfer operations more expensive. Here's how it looks by comparison to solmate ERC1155 standard implementation:
+Additional approval logic validation makes SOME transfer operations more expensive. Here's how it looks by comparison to solmate ERC1155 standard implementation:
 
 ERC-1155S
 

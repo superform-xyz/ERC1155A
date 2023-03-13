@@ -7,11 +7,11 @@ import {Strings} from "openzeppelin-contracts/utils/Strings.sol";
 /**
  * @title ERC1155S
  * @dev ERC1155S is a SuperForm specific extension for ERC1155.
+ *
  * 1. Single id approve capability
- *    - Set approve for single id for specified amount
- *    - Use safeTransferFrom() for regular allApproved ids
- * Using standard ERC1155 setApprovalForAll overrides setApprovalForOne
- * 2. Metadata build out of baseURI and vaultId uint value into https address
+ * 2. Allowance management for single id approve
+ * 3. Metadata build out of baseURI and superformId uint value into offchain metadata address
+ * 
  */
 
 abstract contract ERC1155s is ERC1155 {
@@ -33,11 +33,10 @@ abstract contract ERC1155s is ERC1155 {
 
     /// @notice Transfer singleApproved id with this function
     /// @dev If caller is owner of ids, transfer just executes.
-    /// @dev If caller singleApproved > transferAmount, function executes and reduces allowance
-    /// @dev If caller singleApproved < transferAmount && isApprovedForAll, function executes and resets allowance
-    /// @dev If caller approvedForAll, function just executes and decresease or resets allowance
-    /// @dev Overflow on difference between approvedForAll and singleApproved amounts is set to 0
-    /// @dev Therefore, approvedForAll amount is always senior to singleApproved amount
+    /// @dev If caller singleApproved > transferAmount, function executes and reduces allowance (even if setApproveForAll is true)
+    /// @dev If caller singleApproved < transferAmount && isApprovedForAll, function executes without reducing allowance (full trust assumed)
+    /// @dev If caller only approvedForAll, function executes without reducing allowance (full trust assumed)
+    /// @dev SingleApprove is senior in execution flow, but isApprovedForAll is senior in allowance management 
     function safeTransferFrom(
         address from,
         address to,
@@ -52,14 +51,16 @@ abstract contract ERC1155s is ERC1155 {
 
         /// @dev operator is an owner of ids
         if (operator == from) {
-
+            
+            /// @dev no need to self-approve
             /// @dev make transfer
             _safeTransferFrom(operator, from, to, id, amount, data);
 
         /// @dev operator allowance is higher than requested amount
         } else if (allowed >= amount) {
-            /// @dev make transfer
+            /// @dev decrease allowance
             _decreaseAllowance(from, operator, id, amount);
+            /// @dev make transfer
             _safeTransferFrom(operator, from, to, id, amount, data);
 
         /// @dev operator is approved for all tokens
@@ -130,7 +131,7 @@ abstract contract ERC1155s is ERC1155 {
         );
     }
 
-    /// @notice Internal safeTranferFrom function called after all checks pass
+    /// @notice Internal safeTranferFrom function called after all checks from the public function are done
     function _safeTransferFrom(
         address operator,
         address from,
@@ -162,7 +163,7 @@ abstract contract ERC1155s is ERC1155 {
     ///////////////////////////////////////////////////////////////////////////
 
     /// @notice Public function for setting single id approval
-    /// @dev Works only with _safeTransferFrom() function
+    /// @dev Notice `owner` param, it will always be msg.sender, see _setApprovalForOne()
     function setApprovalForOne(
         address spender,
         uint256 id,
@@ -226,6 +227,7 @@ abstract contract ERC1155s is ERC1155 {
 
     /// @notice Internal function for decreasing single id approval amount
     /// @dev Only to be used by address(this)
+    /// @dev Notice `owner` param, only contract functions should be able to define it
     /// @dev Re-adapted from ERC20
     function _decreaseAllowance(
         address owner,
@@ -252,6 +254,7 @@ abstract contract ERC1155s is ERC1155 {
 
     /// @notice Internal function for setting single id approval
     /// @dev Used for fine-grained control over approvals with increase/decrease allowance
+    /// @dev Notice `owner` param, only contract functions should be able to define it
     function _setApprovalForOne(
         address owner,
         address spender,
@@ -279,9 +282,7 @@ abstract contract ERC1155s is ERC1155 {
 
     /// @notice Used to construct return url
     /// NOTE: add setter?
-    function _baseURI() internal pure virtual returns (string memory) {
-        return "https://api.superform.xyz/superposition/";
-    }
+    function _baseURI() internal pure virtual returns (string memory);
 }
 
 /// @notice A generic interface for a contract which properly accepts ERC1155 tokens.
