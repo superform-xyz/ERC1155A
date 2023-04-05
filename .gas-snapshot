@@ -1,0 +1,3 @@
+ERC1155s__Test:testFailAllApprovalForOne() (gas: 41431)
+ERC1155s__Test:testFailApprovalForOne() (gas: 41762)
+ERC1155s__Test:testSetApprovalForOne() (gas: 72862)
