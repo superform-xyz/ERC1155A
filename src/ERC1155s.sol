@@ -1,50 +1,154 @@
-// SPDX-License-Identifier: UNLICENSED
-pragma solidity 0.8.17;
+/// SPDX-License-Identifier: Apache-2.0
+pragma solidity 0.8.19;
 
 import {ERC1155} from "solmate/tokens/ERC1155.sol";
+import {Strings} from "openzeppelin-contracts/utils/Strings.sol";
 
-contract ERC1155s is ERC1155 {
+/**
+ * @title ERC1155S
+ * @dev ERC1155S is a SuperForm specific extension for ERC1155.
+ *
+ * 1. Single id approve capability
+ * 2. Allowance management for single id approve
+ * 3. Metadata build out of baseURI and superformId uint value into offchain metadata address
+ * 
+ */
+
+abstract contract ERC1155s is ERC1155 {
+    /// @notice Event emitted when single id approval is set
     event ApprovalForOne(
         address indexed owner,
-        address indexed operator,
+        address indexed spender,
         uint256 id,
         uint256 amount
     );
 
-    mapping(address => mapping(address => mapping(uint256 => uint256)))
-        public allowance;
+    /// @notice ERC20-like mapping for single id approvals
+    mapping(address owner => mapping(address spender => mapping(uint256 id => uint256 amount)))
+        private allowances;
 
-    function setApprovalForOne(
-        address operator,
-        uint256 id,
-        uint256 amount
-    ) public virtual {
-        allowance[msg.sender][operator][id] = amount;
+    ///////////////////////////////////////////////////////////////////////////
+    ///                     ERC1155-S LOGIC SECTION                         ///
+    ///////////////////////////////////////////////////////////////////////////
 
-        emit ApprovalForOne(msg.sender, operator, id, amount);
-    }
-
-    /// @notice Introducing single approve through "optionality"
-    /// This function will only accept single-approved Ids and fail for everything else
-    /// Caller is expected to know which function to call, worse that can happen is revert
-    function _safeTransferFrom(
+    /// @notice Transfer singleApproved id with this function
+    /// @dev If caller is owner of ids, transfer just executes.
+    /// @dev If caller singleApproved > transferAmount, function executes and reduces allowance (even if setApproveForAll is true)
+    /// @dev If caller singleApproved < transferAmount && isApprovedForAll, function executes without reducing allowance (full trust assumed)
+    /// @dev If caller only approvedForAll, function executes without reducing allowance (full trust assumed)
+    /// @dev SingleApprove is senior in execution flow, but isApprovedForAll is senior in allowance management 
+    function safeTransferFrom(
         address from,
         address to,
         uint256 id,
         uint256 amount,
         bytes calldata data
-    ) public virtual {
-        require(msg.sender == from || allowance[from][msg.sender][id] >= amount, "NOT_AUTHORIZED");
-        balanceOf[from][id] -= amount;
-        balanceOf[to][id] += amount;
+    ) public virtual override {
+        address operator = msg.sender;
+        uint256 allowed = allowances[from][operator][id];
 
-        emit TransferSingle(msg.sender, from, to, id, amount);
+        /// NOTE: This function order makes it more costly to use isApprovedForAll but cheaper to user single approval and owner transfer
+
+        /// @dev operator is an owner of ids
+        if (operator == from) {
+            
+            /// @dev no need to self-approve
+            /// @dev make transfer
+            _safeTransferFrom(operator, from, to, id, amount, data);
+
+        /// @dev operator allowance is higher than requested amount
+        } else if (allowed >= amount) {
+            /// @dev decrease allowance
+            _decreaseAllowance(from, operator, id, amount);
+            /// @dev make transfer
+            _safeTransferFrom(operator, from, to, id, amount, data);
+
+        /// @dev operator is approved for all tokens
+        } else if (isApprovedForAll[from][operator]) {
+            /// NOTE: We don't decrease individual allowance here.
+            /// NOTE: Spender effectively has unlimited allowance because of isApprovedForAll
+            /// NOTE: We leave allowance management to token owners
+
+            /// @dev make transfer
+            _safeTransferFrom(operator, from, to, id, amount, data);
+
+        /// @dev operator is not an owner of ids or not enough of allowance, or is not approvedForAll
+        } else {
+            revert("NOT_AUTHORIZED");
+        }
+    }
+
+    /// @notice Transfer batch of ids with this function
+    /// @dev Ignores single id approvals. Works only with setApprovalForAll.
+    /// @dev Assumption is that BatchTransfers are supposed to be gas-efficient
+    /// @dev Assumption is that ApprovedForAll operator is also trusted for any other allowance amount existing as singleApprove
+    /// NOTE: Additional option may be range-based approvals
+    function safeBatchTransferFrom(
+        address from,
+        address to,
+        uint256[] calldata ids,
+        uint256[] calldata amounts,
+        bytes calldata data
+    ) public virtual override {
+        require(ids.length == amounts.length, "LENGTH_MISMATCH");
+
+        require(
+            msg.sender == from || isApprovedForAll[from][msg.sender],
+            "NOT_AUTHORIZED"
+        );
+
+        // Storing these outside the loop saves ~15 gas per iteration.
+        uint256 id;
+        uint256 amount;
+
+        for (uint256 i = 0; i < ids.length; ) {
+            id = ids[i];
+            amount = amounts[i];
+
+            balanceOf[from][id] -= amount;
+            balanceOf[to][id] += amount;
+
+            // An array can't have a total length
+            // larger than the max uint256 value.
+            unchecked {
+                ++i;
+            }
+        }
+
+        emit TransferBatch(msg.sender, from, to, ids, amounts);
 
         require(
             to.code.length == 0
                 ? to != address(0)
-                : ERC1155TokenReceiver(to).onERC1155Received(
+                : ERC1155TokenReceiver(to).onERC1155BatchReceived(
                     msg.sender,
+                    from,
+                    ids,
+                    amounts,
+                    data
+                ) == ERC1155TokenReceiver.onERC1155BatchReceived.selector,
+            "UNSAFE_RECIPIENT"
+        );
+    }
+
+    /// @notice Internal safeTranferFrom function called after all checks from the public function are done
+    function _safeTransferFrom(
+        address operator,
+        address from,
+        address to,
+        uint256 id,
+        uint256 amount,
+        bytes calldata data
+    ) internal {
+        balanceOf[from][id] -= amount;
+        balanceOf[to][id] += amount;
+
+        emit TransferSingle(operator, from, to, id, amount);
+        require(
+            to.code.length == 0
+                ? to != address(0)
+                : ERC1155TokenReceiver(to).onERC1155Received(
+                    operator,
                     from,
                     id,
                     amount,
@@ -54,33 +158,131 @@ contract ERC1155s is ERC1155 {
         );
     }
 
-    /// @notice This won't work for SuperForm's cross-chain Vaults
-    /// We can't make cross-chain calls to Vaults public variables/getters
-    /// URI should be return address of off-chain hosted Vault data
-    /// Could work fine with MultiVault
-    function uri(uint256 id) public view virtual override returns (string memory) {}
+    ///////////////////////////////////////////////////////////////////////////
+    ///                     SIGNLE APPROVE SECTION                          ///
+    ///////////////////////////////////////////////////////////////////////////
 
-    /// @notice More costly option, preserves expected ERC1155 interface & behavior
-    /// Condition checking makes this ERC1155 impl more costly for everybody
-    /// NOTE: Is this use-case for try/catch in solidity? Is it cheaper?
-    // function safeTransferFrom(
-    //     address from,
-    //     address to,
-    //     uint256 id,
-    //     uint256 amount,
-    //     bytes calldata data
-    // ) public virtual override {
-    //     if (msg.sender == from || isApprovedForAll[from][msg.sender]) {
-    //         _safeTransferFrom(from, to, id, amount, data);
-    //     } else if (
-    //         msg.sender == from || allowance[from][msg.sender][id] >= amount
-    //     ) {
-    //         _safeTransferFrom(from, to, id, amount, data);
-    //     }
-    // }
+    /// @notice Public function for setting single id approval
+    /// @dev Notice `owner` param, it will always be msg.sender, see _setApprovalForOne()
+    function setApprovalForOne(
+        address spender,
+        uint256 id,
+        uint256 amount
+    ) public virtual {
+        address owner = msg.sender;
+        _setApprovalForOne(owner, spender, id, amount);
+    }
 
-    /// @notice BatchTransfer should still operate only with ApproveForAll
-    /// Checking for set of approvals makes intended use of batch transfer pointless
+    /// @notice Public getter for existing single id approval
+    /// @dev Re-adapted from ERC20
+    function allowance(
+        address owner,
+        address spender,
+        uint256 id
+    ) public view virtual returns (uint256) {
+        return allowances[owner][spender][id];
+    }
+
+    /// @notice Public function for increasing single id approval amount
+    /// @dev Re-adapted from ERC20
+    function increaseAllowance(
+        address spender,
+        uint256 id,
+        uint256 addedValue
+    ) public virtual returns (bool) {
+        address owner = msg.sender;
+        _setApprovalForOne(
+            owner,
+            spender,
+            id,
+            allowance(owner, spender, id) + addedValue
+        );
+        return true;
+    }
+
+    /// @notice Public function for decreasing single id approval amount
+    /// @dev Re-adapted from ERC20
+    function decreaseAllowance(
+        address spender,
+        uint256 id,
+        uint256 subtractedValue
+    ) public virtual returns (bool) {
+        address owner = msg.sender;
+        uint256 currentAllowance = allowance(owner, spender, id);
+        require(
+            currentAllowance >= subtractedValue,
+            "ERC20: decreased allowance below zero"
+        );
+        unchecked {
+            _setApprovalForOne(
+                owner,
+                spender,
+                id,
+                currentAllowance - subtractedValue
+            );
+        }
+
+        return true;
+    }
+
+    /// @notice Internal function for decreasing single id approval amount
+    /// @dev Only to be used by address(this)
+    /// @dev Notice `owner` param, only contract functions should be able to define it
+    /// @dev Re-adapted from ERC20
+    function _decreaseAllowance(
+        address owner,
+        address spender,
+        uint256 id,
+        uint256 subtractedValue
+    ) internal virtual returns (bool) {
+        uint256 currentAllowance = allowance(owner, spender, id);
+        require(
+            currentAllowance >= subtractedValue,
+            "ERC20: decreased allowance below zero"
+        );
+        unchecked {
+            _setApprovalForOne(
+                owner,
+                spender,
+                id,
+                currentAllowance - subtractedValue
+            );
+        }
+
+        return true;
+    }
+
+    /// @notice Internal function for setting single id approval
+    /// @dev Used for fine-grained control over approvals with increase/decrease allowance
+    /// @dev Notice `owner` param, only contract functions should be able to define it
+    function _setApprovalForOne(
+        address owner,
+        address spender,
+        uint256 id,
+        uint256 amount
+    ) internal virtual {
+        require(owner != address(0), "ERC20: approve from the zero address");
+        require(spender != address(0), "ERC20: approve to the zero address");
+        allowances[owner][spender][id] = amount;
+        emit ApprovalForOne(owner, spender, id, amount);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    ///                        METADATA SECTION                             ///
+    ///////////////////////////////////////////////////////////////////////////
+
+    /// @notice See {IERC721Metadata-tokenURI}.
+    /// @dev Compute return string from baseURI set for this contract and unique vaultId
+    function uri(
+        uint256 superFormId
+    ) public view virtual override returns (string memory) {
+        return
+            string(abi.encodePacked(_baseURI(), Strings.toString(superFormId)));
+    }
+
+    /// @notice Used to construct return url
+    /// NOTE: add setter?
+    function _baseURI() internal pure virtual returns (string memory);
 }
 
 /// @notice A generic interface for a contract which properly accepts ERC1155 tokens.
