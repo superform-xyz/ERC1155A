@@ -2,7 +2,7 @@
 pragma solidity 0.8.19;
 
 import {ERC1155} from "solmate/tokens/ERC1155.sol";
-import {Strings} from "@openzeppelin-contracts/contracts/utils/Strings.sol";
+import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
 
 /**
  * @title ERC1155S
