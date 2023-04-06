@@ -2,7 +2,7 @@
 pragma solidity 0.8.19;
 
 import {ERC1155} from "solmate/tokens/ERC1155.sol";
-import {Strings} from "openzeppelin-contracts/utils/Strings.sol";
+import {Strings} from "@openzeppelin-contracts/contracts/utils/Strings.sol";
 
 /**
  * @title ERC1155S
@@ -11,7 +11,7 @@ import {Strings} from "openzeppelin-contracts/utils/Strings.sol";
  * 1. Single id approve capability
  * 2. Allowance management for single id approve
  * 3. Metadata build out of baseURI and superformId uint value into offchain metadata address
- * 
+ *
  */
 
 abstract contract ERC1155s is ERC1155 {
@@ -36,7 +36,7 @@ abstract contract ERC1155s is ERC1155 {
     /// @dev If caller singleApproved > transferAmount, function executes and reduces allowance (even if setApproveForAll is true)
     /// @dev If caller singleApproved < transferAmount && isApprovedForAll, function executes without reducing allowance (full trust assumed)
     /// @dev If caller only approvedForAll, function executes without reducing allowance (full trust assumed)
-    /// @dev SingleApprove is senior in execution flow, but isApprovedForAll is senior in allowance management 
+    /// @dev SingleApprove is senior in execution flow, but isApprovedForAll is senior in allowance management
     function safeTransferFrom(
         address from,
         address to,
@@ -51,19 +51,18 @@ abstract contract ERC1155s is ERC1155 {
 
         /// @dev operator is an owner of ids
         if (operator == from) {
-            
             /// @dev no need to self-approve
             /// @dev make transfer
             _safeTransferFrom(operator, from, to, id, amount, data);
 
-        /// @dev operator allowance is higher than requested amount
+            /// @dev operator allowance is higher than requested amount
         } else if (allowed >= amount) {
             /// @dev decrease allowance
             _decreaseAllowance(from, operator, id, amount);
             /// @dev make transfer
             _safeTransferFrom(operator, from, to, id, amount, data);
 
-        /// @dev operator is approved for all tokens
+            /// @dev operator is approved for all tokens
         } else if (isApprovedForAll[from][operator]) {
             /// NOTE: We don't decrease individual allowance here.
             /// NOTE: Spender effectively has unlimited allowance because of isApprovedForAll
@@ -72,7 +71,7 @@ abstract contract ERC1155s is ERC1155 {
             /// @dev make transfer
             _safeTransferFrom(operator, from, to, id, amount, data);
 
-        /// @dev operator is not an owner of ids or not enough of allowance, or is not approvedForAll
+            /// @dev operator is not an owner of ids or not enough of allowance, or is not approvedForAll
         } else {
             revert("NOT_AUTHORIZED");
         }
