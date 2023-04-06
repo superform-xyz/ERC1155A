@@ -279,9 +279,8 @@ abstract contract ERC1155s is ERC1155 {
             string(abi.encodePacked(_baseURI(), Strings.toString(superFormId)));
     }
 
-    /// @notice Used to construct return url
-    /// NOTE: add setter?
-    function _baseURI() internal pure virtual returns (string memory);
+    /// @dev Used to construct return url
+    function _baseURI() internal view virtual returns (string memory);
 }
 
 /// @notice A generic interface for a contract which properly accepts ERC1155 tokens.
