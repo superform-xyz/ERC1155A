@@ -11,7 +11,7 @@ contract ERC1155STest is Test {
     address public bob = address(0x0997);
 
     function setUp() public {
-        SuperShares = new MockERC1155s();
+        SuperShares = new MockERC1155s("uri");
         SuperShares.mint(alice, 1, THOUSAND_E18, "");
     }
 

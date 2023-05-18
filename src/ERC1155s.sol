@@ -92,45 +92,7 @@ abstract contract ERC1155s is ERC1155 {
         uint256[] memory amounts,
         bytes memory data
     ) public virtual override {
-        require(ids.length == amounts.length, "LENGTH_MISMATCH");
-
-        require(
-            msg.sender == from || isApprovedForAll(from,msg.sender),
-            "NOT_AUTHORIZED"
-        );
-
-        // Storing these outside the loop saves ~15 gas per iteration.
-        uint256 id;
-        uint256 amount;
-
-        for (uint256 i = 0; i < ids.length; ) {
-            id = ids[i];
-            amount = amounts[i];
-
-            balanceOf[from][id] -= amount;
-            balanceOf[to][id] += amount;
-
-            // An array can't have a total length
-            // larger than the max uint256 value.
-            unchecked {
-                ++i;
-            }
-        }
-
-        emit TransferBatch(msg.sender, from, to, ids, amounts);
-
-        require(
-            to.code.length == 0
-                ? to != address(0)
-                : ERC1155TokenReceiver(to).onERC1155BatchReceived(
-                    msg.sender,
-                    from,
-                    ids,
-                    amounts,
-                    data
-                ) == ERC1155TokenReceiver.onERC1155BatchReceived.selector,
-            "UNSAFE_RECIPIENT"
-        );
+        safeBatchTransferFrom(from, to, ids, amounts, data);
     }
 
     /// @notice Internal safeTranferFrom function called after all checks from the public function are done
@@ -142,22 +104,7 @@ abstract contract ERC1155s is ERC1155 {
         uint256 amount,
         bytes memory data
     ) internal virtual {
-        balanceOf[from][id] -= amount;
-        balanceOf[to][id] += amount;
-
-        emit TransferSingle(operator, from, to, id, amount);
-        require(
-            to.code.length == 0
-                ? to != address(0)
-                : ERC1155TokenReceiver(to).onERC1155Received(
-                    operator,
-                    from,
-                    id,
-                    amount,
-                    data
-                ) == ERC1155TokenReceiver.onERC1155Received.selector,
-            "UNSAFE_RECIPIENT"
-        );
+        _safeTransferFrom( from, to, id, amount, data);
     }
 
     ///////////////////////////////////////////////////////////////////////////
