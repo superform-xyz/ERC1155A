@@ -1,7 +1,7 @@
 /// SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.19;
 
-import {ERC1155} from "solmate/tokens/ERC1155.sol";
+import {ERC1155} from "openzeppelin-contracts/contracts/token/ERC1155/ERC1155.sol";
 import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
 
 /**
@@ -27,6 +27,9 @@ abstract contract ERC1155s is ERC1155 {
     mapping(address owner => mapping(address spender => mapping(uint256 id => uint256 amount)))
         private allowances;
 
+
+    constructor(string memory uri_) ERC1155(uri_) {}
+
     ///////////////////////////////////////////////////////////////////////////
     ///                     ERC1155-S LOGIC SECTION                         ///
     ///////////////////////////////////////////////////////////////////////////
@@ -42,7 +45,7 @@ abstract contract ERC1155s is ERC1155 {
         address to,
         uint256 id,
         uint256 amount,
-        bytes calldata data
+        bytes memory data
     ) public virtual override {
         address operator = msg.sender;
         uint256 allowed = allowances[from][operator][id];
@@ -63,7 +66,7 @@ abstract contract ERC1155s is ERC1155 {
             _safeTransferFrom(operator, from, to, id, amount, data);
 
             /// @dev operator is approved for all tokens
-        } else if (isApprovedForAll[from][operator]) {
+        } else if (isApprovedForAll(from, operator)) {
             /// NOTE: We don't decrease individual allowance here.
             /// NOTE: Spender effectively has unlimited allowance because of isApprovedForAll
             /// NOTE: We leave allowance management to token owners
@@ -85,14 +88,14 @@ abstract contract ERC1155s is ERC1155 {
     function safeBatchTransferFrom(
         address from,
         address to,
-        uint256[] calldata ids,
-        uint256[] calldata amounts,
-        bytes calldata data
+        uint256[] memory ids,
+        uint256[] memory amounts,
+        bytes memory data
     ) public virtual override {
         require(ids.length == amounts.length, "LENGTH_MISMATCH");
 
         require(
-            msg.sender == from || isApprovedForAll[from][msg.sender],
+            msg.sender == from || isApprovedForAll(from,msg.sender),
             "NOT_AUTHORIZED"
         );
 
@@ -137,8 +140,8 @@ abstract contract ERC1155s is ERC1155 {
         address to,
         uint256 id,
         uint256 amount,
-        bytes calldata data
-    ) internal {
+        bytes memory data
+    ) internal virtual {
         balanceOf[from][id] -= amount;
         balanceOf[to][id] += amount;
 
