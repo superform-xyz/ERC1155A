@@ -2,6 +2,7 @@
 pragma solidity 0.8.19;
 
 import {ERC1155} from "openzeppelin-contracts/contracts/token/ERC1155/ERC1155.sol";
+import {IERC1155s} from "./IERC1155s.sol";
 import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
 
 /**
@@ -14,21 +15,23 @@ import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
  *
  */
 
-abstract contract ERC1155s is ERC1155 {
-    /// @notice Event emitted when single id approval is set
-    event ApprovalForOne(
-        address indexed owner,
-        address indexed spender,
-        uint256 id,
-        uint256 amount
-    );
+abstract contract ERC1155s is IERC1155s {
+    /*//////////////////////////////////////////////////////////////
+                             ERC1155s STORAGE
+    //////////////////////////////////////////////////////////////*/
+
+    // Used as the URI for all token types by relying on ID substitution, e.g. https://token-cdn-domain/{id}.json
+    string private _uri;
 
     /// @notice ERC20-like mapping for single id approvals
     mapping(address owner => mapping(address spender => mapping(uint256 id => uint256 amount)))
         private allowances;
 
+    mapping(address => mapping(uint256 => uint256)) public balanceOf;
 
-    constructor(string memory uri_) ERC1155(uri_) {}
+    mapping(address => mapping(address => bool)) public isApprovedForAll;
+
+    constructor(string memory uri_) {}
 
     ///////////////////////////////////////////////////////////////////////////
     ///                     ERC1155-S LOGIC SECTION                         ///
@@ -45,7 +48,7 @@ abstract contract ERC1155s is ERC1155 {
         address to,
         uint256 id,
         uint256 amount,
-        bytes memory data
+        bytes calldata data
     ) public virtual override {
         address operator = msg.sender;
         uint256 allowed = allowances[from][operator][id];
@@ -66,7 +69,7 @@ abstract contract ERC1155s is ERC1155 {
             _safeTransferFrom(operator, from, to, id, amount, data);
 
             /// @dev operator is approved for all tokens
-        } else if (isApprovedForAll(from, operator)) {
+        } else if (isApprovedForAll[from][operator]) {
             /// NOTE: We don't decrease individual allowance here.
             /// NOTE: Spender effectively has unlimited allowance because of isApprovedForAll
             /// NOTE: We leave allowance management to token owners
@@ -80,21 +83,6 @@ abstract contract ERC1155s is ERC1155 {
         }
     }
 
-    /// @notice Transfer batch of ids with this function
-    /// @dev Ignores single id approvals. Works only with setApprovalForAll.
-    /// @dev Assumption is that BatchTransfers are supposed to be gas-efficient
-    /// @dev Assumption is that ApprovedForAll operator is also trusted for any other allowance amount existing as singleApprove
-    /// NOTE: Additional option may be range-based approvals
-    function safeBatchTransferFrom(
-        address from,
-        address to,
-        uint256[] memory ids,
-        uint256[] memory amounts,
-        bytes memory data
-    ) public virtual override {
-        safeBatchTransferFrom(from, to, ids, amounts, data);
-    }
-
     /// @notice Internal safeTranferFrom function called after all checks from the public function are done
     function _safeTransferFrom(
         address operator,
@@ -102,9 +90,107 @@ abstract contract ERC1155s is ERC1155 {
         address to,
         uint256 id,
         uint256 amount,
-        bytes memory data
+        bytes calldata data
     ) internal virtual {
-        _safeTransferFrom( from, to, id, amount, data);
+        balanceOf[from][id] -= amount;
+        balanceOf[to][id] += amount;
+
+        emit TransferSingle(operator, from, to, id, amount);
+        require(
+            to.code.length == 0
+                ? to != address(0)
+                : ERC1155TokenReceiver(to).onERC1155Received(
+                    operator,
+                    from,
+                    id,
+                    amount,
+                    data
+                ) == ERC1155TokenReceiver.onERC1155Received.selector,
+            "UNSAFE_RECIPIENT"
+        );
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                              ERC1155 LOGIC
+    //////////////////////////////////////////////////////////////*/
+
+    /// @dev Implementation copied from solmate/ERC1155
+    function setApprovalForAll(address operator, bool approved) public virtual {
+        isApprovedForAll[msg.sender][operator] = approved;
+
+        emit ApprovalForAll(msg.sender, operator, approved);
+    }
+
+    /// @notice Transfer batch of ids.
+    /// @dev Implementation copied from solmate/ERC1155
+    /// @dev Ignores single id approvals. Works only with setApprovalForAll.
+    /// @dev Assumption is that BatchTransfers are supposed to be gas-efficient
+    /// @dev Assumption is that ApprovedForAll operator is also trusted for any other allowance amount existing as singleApprove
+    /// NOTE: Additional option may be range-based approvals
+    function safeBatchTransferFrom(
+        address from,
+        address to,
+        uint256[] calldata ids,
+        uint256[] calldata amounts,
+        bytes calldata data
+    ) public virtual override {
+        require(ids.length == amounts.length, "LENGTH_MISMATCH");
+
+        require(
+            msg.sender == from || isApprovedForAll[from][msg.sender],
+            "NOT_AUTHORIZED"
+        );
+
+        // Storing these outside the loop saves ~15 gas per iteration.
+        uint256 id;
+        uint256 amount;
+
+        for (uint256 i = 0; i < ids.length; ) {
+            id = ids[i];
+            amount = amounts[i];
+
+            balanceOf[from][id] -= amount;
+            balanceOf[to][id] += amount;
+
+            // An array can't have a total length
+            // larger than the max uint256 value.
+            unchecked {
+                ++i;
+            }
+        }
+
+        emit TransferBatch(msg.sender, from, to, ids, amounts);
+
+        require(
+            to.code.length == 0
+                ? to != address(0)
+                : ERC1155TokenReceiver(to).onERC1155BatchReceived(
+                    msg.sender,
+                    from,
+                    ids,
+                    amounts,
+                    data
+                ) == ERC1155TokenReceiver.onERC1155BatchReceived.selector,
+            "UNSAFE_RECIPIENT"
+        );
+    }
+
+    /// @dev Implementation copied from solmate/ERC1155
+    function balanceOfBatch(
+        address[] calldata owners,
+        uint256[] calldata ids
+    ) public view virtual returns (uint256[] memory balances) {
+        require(owners.length == ids.length, "LENGTH_MISMATCH");
+
+        balances = new uint256[](owners.length);
+
+        // Unchecked because the only math done is incrementing
+        // the array index counter which cannot possibly overflow.
+        unchecked {
+            for (uint256 i = 0; i < owners.length; ++i) {
+                balances[i] = balanceOf[owners[i]][ids[i]];
+            }
+        }
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -220,17 +306,128 @@ abstract contract ERC1155s is ERC1155 {
     ///                        METADATA SECTION                             ///
     ///////////////////////////////////////////////////////////////////////////
 
+    function _setURI(string memory newuri) internal virtual {
+        _uri = newuri;
+    }
+
     /// @notice See {IERC721Metadata-tokenURI}.
     /// @dev Compute return string from baseURI set for this contract and unique vaultId
     function uri(
         uint256 superFormId
-    ) public view virtual override returns (string memory) {
+    ) public view virtual returns (string memory) {
         return
             string(abi.encodePacked(_baseURI(), Strings.toString(superFormId)));
     }
 
     /// @dev Used to construct return url
     function _baseURI() internal view virtual returns (string memory);
+
+    /*//////////////////////////////////////////////////////////////
+                              ERC165 LOGIC
+    //////////////////////////////////////////////////////////////*/
+
+    function supportsInterface(bytes4 interfaceId) public view virtual returns (bool) {
+        return
+            interfaceId == 0x01ffc9a7 || // ERC165 Interface ID for ERC165
+            interfaceId == 0xd9b67a26 || // ERC165 Interface ID for ERC1155
+            interfaceId == 0x0e89341c; // ERC165 Interface ID for ERC1155MetadataURI
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                        INTERNAL MINT/BURN LOGIC
+    //////////////////////////////////////////////////////////////*/
+
+    /// @dev Implementation copied from solmate/ERC1155
+    function _mint(
+        address to,
+        uint256 id,
+        uint256 amount,
+        bytes memory data
+    ) internal virtual {
+        balanceOf[to][id] += amount;
+
+        emit TransferSingle(msg.sender, address(0), to, id, amount);
+
+        require(
+            to.code.length == 0
+                ? to != address(0)
+                : ERC1155TokenReceiver(to).onERC1155Received(
+                    msg.sender,
+                    address(0),
+                    id,
+                    amount,
+                    data
+                ) == ERC1155TokenReceiver.onERC1155Received.selector,
+            "UNSAFE_RECIPIENT"
+        );
+    }
+
+    /// @dev Implementation copied from solmate/ERC1155
+    function _batchMint(
+        address to,
+        uint256[] memory ids,
+        uint256[] memory amounts,
+        bytes memory data
+    ) internal virtual {
+        uint256 idsLength = ids.length; // Saves MLOADs.
+
+        require(idsLength == amounts.length, "LENGTH_MISMATCH");
+
+        for (uint256 i = 0; i < idsLength; ) {
+            balanceOf[to][ids[i]] += amounts[i];
+
+            // An array can't have a total length
+            // larger than the max uint256 value.
+            unchecked {
+                ++i;
+            }
+        }
+
+        emit TransferBatch(msg.sender, address(0), to, ids, amounts);
+
+        require(
+            to.code.length == 0
+                ? to != address(0)
+                : ERC1155TokenReceiver(to).onERC1155BatchReceived(
+                    msg.sender,
+                    address(0),
+                    ids,
+                    amounts,
+                    data
+                ) == ERC1155TokenReceiver.onERC1155BatchReceived.selector,
+            "UNSAFE_RECIPIENT"
+        );
+    }
+
+    /// @dev Implementation copied from solmate/ERC1155
+    function _batchBurn(
+        address from,
+        uint256[] memory ids,
+        uint256[] memory amounts
+    ) internal virtual {
+        uint256 idsLength = ids.length; // Saves MLOADs.
+
+        require(idsLength == amounts.length, "LENGTH_MISMATCH");
+
+        for (uint256 i = 0; i < idsLength; ) {
+            balanceOf[from][ids[i]] -= amounts[i];
+
+            // An array can't have a total length
+            // larger than the max uint256 value.
+            unchecked {
+                ++i;
+            }
+        }
+
+        emit TransferBatch(msg.sender, from, address(0), ids, amounts);
+    }
+
+    /// @dev Implementation copied from solmate/ERC1155
+    function _burn(address from, uint256 id, uint256 amount) internal virtual {
+        balanceOf[from][id] -= amount;
+
+        emit TransferSingle(msg.sender, from, address(0), id, amount);
+    }
 }
 
 /// @notice A generic interface for a contract which properly accepts ERC1155 tokens.
