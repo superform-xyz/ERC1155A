@@ -134,7 +134,7 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
         public userTransferOrBurnAmounts;
 
     function setUp() public {
-        token = new MockERC1155s("uri");
+        token = new MockERC1155s();
     }
 
     function testMintToEOA() public {

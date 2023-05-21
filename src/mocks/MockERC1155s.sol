@@ -7,10 +7,6 @@ import {Strings} from "../utils/Strings.sol";
 /// @notice For test purpouses we open mint()/burn() functions of ERC1155s
 contract MockERC1155s is ERC1155s {
 
-    ///////////////////////////////////////////////////////////////////////////
-
-    constructor(string memory uri_) ERC1155s(uri_) {}
-
     /// @dev See ../ERC1155s.sol
     function uri(
         uint256 superFormId
@@ -19,6 +15,7 @@ contract MockERC1155s is ERC1155s {
             string(abi.encodePacked(_baseURI(), Strings.toString(superFormId)));
     }
 
+    /// @dev This is non-upgradeable value after deployment
     function _baseURI() internal pure override returns (string memory) {
         return "https://api.superform.xyz/superposition/";
     }

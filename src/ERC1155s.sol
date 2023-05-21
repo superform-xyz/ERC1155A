@@ -21,9 +21,6 @@ abstract contract ERC1155s is IERC1155s {
                              ERC1155s STORAGE
     //////////////////////////////////////////////////////////////*/
 
-    /// @dev Used as the URI for all token types by relying on ID substitution, e.g. https://token-cdn-domain/{id}.json
-    string private _uri;
-
     /// @notice ERC20-like mapping for single id approvals. SuperForm specific.
     mapping(address owner => mapping(address spender => mapping(uint256 id => uint256 amount)))
         private allowances;
@@ -33,10 +30,6 @@ abstract contract ERC1155s is IERC1155s {
 
     /// @dev Implementation copied from solmate/ERC1155
     mapping(address => mapping(address => bool)) public isApprovedForAll;
-
-    constructor(string memory uri_) {
-        _setURI(uri_);
-    }
 
     ///////////////////////////////////////////////////////////////////////////
     ///                     ERC1155-S LOGIC SECTION                         ///
@@ -310,11 +303,6 @@ abstract contract ERC1155s is IERC1155s {
     ///////////////////////////////////////////////////////////////////////////
     ///                        METADATA SECTION                             ///
     ///////////////////////////////////////////////////////////////////////////
-
-    /// @dev Implementation copied from openzeppelin/ERC1155
-    function _setURI(string memory newuri) internal virtual {
-        _uri = newuri;
-    }
 
     /// @notice See {IERC721Metadata-tokenURI}.
     /// @dev Compute return string from baseURI set for this contract and unique vaultId
