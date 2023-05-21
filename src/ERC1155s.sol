@@ -1,14 +1,14 @@
 /// SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.19;
 
-import {ERC1155} from "openzeppelin-contracts/contracts/token/ERC1155/ERC1155.sol";
 import {IERC1155s} from "./IERC1155s.sol";
-import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
+import {Strings} from "./utils/Strings.sol";
 
 /**
  * @title ERC1155S
  * @dev ERC1155S is a SuperForm specific extension for ERC1155.
- *
+ * @dev Adapted solmate implementation, follows ERC1155 standard interface
+ * 
  * 1. Single id approve capability
  * 2. Allowance management for single id approve
  * 3. Metadata build out of baseURI and superformId uint value into offchain metadata address
@@ -16,22 +16,27 @@ import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
  */
 
 abstract contract ERC1155s is IERC1155s {
+
     /*//////////////////////////////////////////////////////////////
                              ERC1155s STORAGE
     //////////////////////////////////////////////////////////////*/
 
-    // Used as the URI for all token types by relying on ID substitution, e.g. https://token-cdn-domain/{id}.json
+    /// @dev Used as the URI for all token types by relying on ID substitution, e.g. https://token-cdn-domain/{id}.json
     string private _uri;
 
-    /// @notice ERC20-like mapping for single id approvals
+    /// @notice ERC20-like mapping for single id approvals. SuperForm specific.
     mapping(address owner => mapping(address spender => mapping(uint256 id => uint256 amount)))
         private allowances;
 
+    /// @dev Implementation copied from solmate/ERC1155
     mapping(address => mapping(uint256 => uint256)) public balanceOf;
 
+    /// @dev Implementation copied from solmate/ERC1155
     mapping(address => mapping(address => bool)) public isApprovedForAll;
 
-    constructor(string memory uri_) {}
+    constructor(string memory uri_) {
+        _setURI(uri_);
+    }
 
     ///////////////////////////////////////////////////////////////////////////
     ///                     ERC1155-S LOGIC SECTION                         ///
@@ -84,6 +89,7 @@ abstract contract ERC1155s is IERC1155s {
     }
 
     /// @notice Internal safeTranferFrom function called after all checks from the public function are done
+    /// @dev Notice `operator` param. It's msg.sender to the safeTransferFrom function. Function is specific to SuperForm singleId approve logic.
     function _safeTransferFrom(
         address operator,
         address from,
@@ -121,12 +127,11 @@ abstract contract ERC1155s is IERC1155s {
         emit ApprovalForAll(msg.sender, operator, approved);
     }
 
-    /// @notice Transfer batch of ids.
     /// @dev Implementation copied from solmate/ERC1155
     /// @dev Ignores single id approvals. Works only with setApprovalForAll.
     /// @dev Assumption is that BatchTransfers are supposed to be gas-efficient
     /// @dev Assumption is that ApprovedForAll operator is also trusted for any other allowance amount existing as singleApprove
-    /// NOTE: Additional option may be range-based approvals
+    /// TODO: Additional option may be range-based approvals
     function safeBatchTransferFrom(
         address from,
         address to,
@@ -306,6 +311,7 @@ abstract contract ERC1155s is IERC1155s {
     ///                        METADATA SECTION                             ///
     ///////////////////////////////////////////////////////////////////////////
 
+    /// @dev Implementation copied from openzeppelin/ERC1155
     function _setURI(string memory newuri) internal virtual {
         _uri = newuri;
     }
@@ -326,6 +332,7 @@ abstract contract ERC1155s is IERC1155s {
                               ERC165 LOGIC
     //////////////////////////////////////////////////////////////*/
 
+    /// @dev Implementation copied from solmate/ERC1155
     function supportsInterface(bytes4 interfaceId) public view virtual returns (bool) {
         return
             interfaceId == 0x01ffc9a7 || // ERC165 Interface ID for ERC165

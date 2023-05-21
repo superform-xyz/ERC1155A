@@ -2,7 +2,7 @@
 pragma solidity 0.8.19;
 
 import {ERC1155s} from "../ERC1155s.sol";
-import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
+import {Strings} from "../utils/Strings.sol";
 
 /// @notice For test purpouses we open mint()/burn() functions of ERC1155s
 contract MockERC1155s is ERC1155s {

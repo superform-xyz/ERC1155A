@@ -1,7 +1,7 @@
 /// SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.19;
 
-import {IERC1155} from "openzeppelin-contracts/contracts/token/ERC1155/IERC1155.sol";
+import {IERC1155} from "./utils/IERC1155.sol";
 
 interface IERC1155s is IERC1155 {
 
