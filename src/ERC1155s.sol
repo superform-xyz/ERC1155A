@@ -8,7 +8,7 @@ import {Strings} from "./utils/Strings.sol";
  * @title ERC1155S
  * @dev ERC1155S is a SuperForm specific extension for ERC1155.
  * @dev Adapted solmate implementation, follows ERC1155 standard interface
- * 
+ *
  * 1. Single id approve capability
  * 2. Allowance management for single id approve
  * 3. Metadata build out of baseURI and superformId uint value into offchain metadata address
@@ -16,7 +16,6 @@ import {Strings} from "./utils/Strings.sol";
  */
 
 abstract contract ERC1155s is IERC1155s {
-
     /*//////////////////////////////////////////////////////////////
                              ERC1155s STORAGE
     //////////////////////////////////////////////////////////////*/
@@ -224,12 +223,14 @@ abstract contract ERC1155s is IERC1155s {
         uint256 addedValue
     ) public virtual returns (bool) {
         address owner = msg.sender;
-        _setApprovalForOne(
-            owner,
-            spender,
-            id,
-            allowance(owner, spender, id) + addedValue
-        );
+        unchecked {
+            _setApprovalForOne(
+                owner,
+                spender,
+                id,
+                allowance(owner, spender, id) + addedValue
+            );
+        }
         return true;
     }
 
@@ -241,21 +242,7 @@ abstract contract ERC1155s is IERC1155s {
         uint256 subtractedValue
     ) public virtual returns (bool) {
         address owner = msg.sender;
-        uint256 currentAllowance = allowance(owner, spender, id);
-        require(
-            currentAllowance >= subtractedValue,
-            "ERC20: decreased allowance below zero"
-        );
-        unchecked {
-            _setApprovalForOne(
-                owner,
-                spender,
-                id,
-                currentAllowance - subtractedValue
-            );
-        }
-
-        return true;
+        return _decreaseAllowance(owner, spender, id, subtractedValue);
     }
 
     /// @notice Internal function for decreasing single id approval amount
@@ -321,7 +308,9 @@ abstract contract ERC1155s is IERC1155s {
     //////////////////////////////////////////////////////////////*/
 
     /// @dev Implementation copied from solmate/ERC1155
-    function supportsInterface(bytes4 interfaceId) public view virtual returns (bool) {
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view virtual returns (bool) {
         return
             interfaceId == 0x01ffc9a7 || // ERC165 Interface ID for ERC165
             interfaceId == 0xd9b67a26 || // ERC165 Interface ID for ERC1155
