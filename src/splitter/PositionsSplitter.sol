@@ -38,6 +38,7 @@ contract PositionsSplitter {
     /// @notice vaultId given here needs to be the same as vaultId on Source!
     /// @dev Make sure its set for existing vaultIds only
     /// @dev Ideally, this should be only called by SuperRouter
+    /// TODO: SuperRBAC? Add onlySuperPositions() 
     /// @dev WARNING: vaultId cant be used for mapping, overwrite
     function registerWrapper(
         uint256 vaultId,
@@ -59,6 +60,7 @@ contract PositionsSplitter {
     function wrapBatch(uint256[] memory vaultIds, uint256[] memory amounts)
         external
     {
+        /// TODO: Add single approval logic! (prep for range approves)
         require(
             sERC1155.isApprovedForAll(msg.sender, address(this)),
             "Error: Insufficient Approval"
@@ -123,6 +125,8 @@ contract PositionsSplitter {
     //////////////////////////////////////////////////////////////*/
 
     function wrap(uint256 vaultId, uint256 amount) external {
+
+        /// TODO: Add single approval logic! (prep for range approves)
         require(
             sERC1155.isApprovedForAll(msg.sender, address(this)),
             "Error: Insufficient Approval"
@@ -151,10 +155,13 @@ contract PositionsSplitter {
         address user,
         uint256 amount
     ) external {
+
+        /// TODO: Add single approval logic! (prep for range approves)
         require(
             sERC1155.isApprovedForAll(msg.sender, address(this)),
             "Error: Insufficient Approval"
         );
+        
         sERC1155.safeTransferFrom(
             user,
             address(this),
