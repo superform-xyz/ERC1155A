@@ -7,7 +7,6 @@ import {sERC20} from "./sERC20.sol";
 /// @title Positions Splitter | WIP / EXPERIMENTAL
 /// @dev allows users to split all or individual vaultIds of SuperFormERC1155 into ERC20
 contract PositionsSplitter {
-
     address public immutable admin;
 
     IERC1155s public sERC1155;
@@ -22,15 +21,18 @@ contract PositionsSplitter {
     /// @dev vaultId => wrappedERC1155idERC20
     mapping(uint256 vaultId => sERC20) public synthethicTokenId;
 
+    /// TODO: Should this be admin or SuperPositions?
     modifier onlyAdmin() {
         if (msg.sender != admin) {
-            revert("sERC20: Only PositionSplitter");
+            revert("onlyAdmin: ACCESS_CONTROL");
         }
         _;
     }
 
     /// @dev Access Control should be re-thinked
     constructor(IERC1155s superFormLp) {
+        /// TODO: TBD! Should we use SuperPositions or external admin account?
+        // admin = address(superFormLp);
         admin = msg.sender;
         sERC1155 = superFormLp;
     }
@@ -38,7 +40,7 @@ contract PositionsSplitter {
     /// @notice vaultId given here needs to be the same as vaultId on Source!
     /// @dev Make sure its set for existing vaultIds only
     /// @dev Ideally, this should be only called by SuperRouter
-    /// TODO: SuperRBAC? Add onlySuperPositions() 
+    /// TODO: SuperRBAC? Who can registerWrapper? SuperPostions or 'external' Admin account?
     /// @dev WARNING: vaultId cant be used for mapping, overwrite
     function registerWrapper(
         uint256 vaultId,
@@ -57,14 +59,10 @@ contract PositionsSplitter {
 
     /// @notice Use ERC1155 BatchTransfer to wrap multiple ERC1155 ids into separate ERC20
     /// Easier to wrap than to wrapBack because of ERC1155 beauty!
-    function wrapBatch(uint256[] memory vaultIds, uint256[] memory amounts)
-        external
-    {
-        /// TODO: Add single approval logic! (prep for range approves)
-        require(
-            sERC1155.isApprovedForAll(msg.sender, address(this)),
-            "Error: Insufficient Approval"
-        );
+    function wrapBatch(
+        uint256[] memory vaultIds,
+        uint256[] memory amounts
+    ) external {
 
         /// @dev Use ERC1155 BatchTransfer to lower costs
         sERC1155.safeBatchTransferFrom(
@@ -90,6 +88,7 @@ contract PositionsSplitter {
         uint256[] memory vaultIds,
         uint256[] memory amounts
     ) external {
+        /// TODO: Add single approval logic! (prep for range approves)
         require(
             sERC1155.isApprovedForAll(user, address(this)),
             "Error: Insufficient Approval"
@@ -125,15 +124,7 @@ contract PositionsSplitter {
     //////////////////////////////////////////////////////////////*/
 
     function wrap(uint256 vaultId, uint256 amount) external {
-
-        /// TODO: Add single approval logic! (prep for range approves)
-        require(
-            sERC1155.isApprovedForAll(msg.sender, address(this)),
-            "Error: Insufficient Approval"
-        );
-
-        /// @dev The only problem to solve is restrict burn on Source,
-        /// but should be covered because now SharesSplitter owns tokenId1155
+        /// @dev singleId approval required for this call to succeed
         /// Note: User needs to approve SharesSplitter first
         sERC1155.safeTransferFrom(
             msg.sender,
@@ -150,18 +141,9 @@ contract PositionsSplitter {
         emit Wrapped(msg.sender, vaultId, amount);
     }
 
-    function wrapFor(
-        uint256 vaultId,
-        address user,
-        uint256 amount
-    ) external {
-
-        /// TODO: Add single approval logic! (prep for range approves)
-        require(
-            sERC1155.isApprovedForAll(msg.sender, address(this)),
-            "Error: Insufficient Approval"
-        );
-        
+    function wrapFor(uint256 vaultId, address user, uint256 amount) external {
+        /// @dev singleId approval required to be issued for msg.sender for this call to succeed
+        /// Note: User needs to approve SharesSplitter first
         sERC1155.safeTransferFrom(
             user,
             address(this),
@@ -177,11 +159,8 @@ contract PositionsSplitter {
     /// @dev Callback to SuperRouter from here to re-mint ERC1155 on SuperRouter
     function unwrap(uint256 vaultId, uint256 amount) external {
         sERC20 token = synthethicTokenId[vaultId];
-        require(
-            token.allowance(msg.sender, address(this)) >= amount,
-            "Error: Insufficient Approval"
-        );
 
+        /// TODO: Test and validate
         /// @dev No need to transfer to contract, we can burn for msg.sender
         token.burn(msg.sender, amount);
 
@@ -202,17 +181,16 @@ contract PositionsSplitter {
         emit Unwrapped(msg.sender, vaultId, amount);
     }
 
-    function unwrapFor(
-        uint256 vaultId,
-        address user,
-        uint256 amount
-    ) external {
+    function unwrapFor(uint256 vaultId, address user, uint256 amount) external {
         sERC20 token = synthethicTokenId[vaultId];
-        require(
-            token.allowance(user, address(this)) >= amount,
-            "Error: Insufficient Approval"
-        );
 
+        /// @dev How many tokens are allowed to be spent by msg sender on behalf of user
+        uint256 allowed = token.allowance(msg.sender, user);
+
+        /// TODO: Needs access to sERC20 to modify allowance if PositionSplitter is external contract
+        // if (allowed != type(uint256).max) allowance[from][msg.sender] = allowed - amount;
+
+        /// FIXME: THIS IS VULNERABLE, UNRESTRICTED BURN!!!
         /// @dev No need to transfer to contract, we can burn for msg.sender
         token.burn(user, amount);
 
