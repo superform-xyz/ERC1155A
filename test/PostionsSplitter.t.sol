@@ -4,6 +4,7 @@ pragma solidity 0.8.19;
 import "forge-std/Test.sol";
 import "../src/mocks/MockERC1155s.sol";
 import "../src/splitter/PositionsSplitter.sol";
+import "../src/mocks/MockPositionsSplitter.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 
 import "forge-std/console.sol";
@@ -23,7 +24,7 @@ contract PositionsSplitterTest is Test {
         superShares = new MockERC1155s();
         superShares.mint(alice, 1, THOUSAND_E18, "");
 
-        positionsSplitter = new PositionsSplitter(superShares);
+        positionsSplitter = new MockPositionsSplitter(superShares);
         syntheticERC20Token = positionsSplitter.registerWrapper(
             1,
             "SuperPosition Id 1",

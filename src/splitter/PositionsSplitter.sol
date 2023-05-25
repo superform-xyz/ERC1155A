@@ -6,9 +6,8 @@ import {sERC20} from "./sERC20.sol";
 
 /// @title Positions Splitter | WIP / EXPERIMENTAL
 /// @dev allows users to split all or individual vaultIds of SuperFormERC1155 into ERC20
-contract PositionsSplitter {
-    address public immutable admin;
-
+abstract contract PositionsSplitter {
+    
     IERC1155s public sERC1155;
     uint256 public syntheticTokenID;
 
@@ -21,36 +20,24 @@ contract PositionsSplitter {
     /// @dev vaultId => wrappedERC1155idERC20
     mapping(uint256 vaultId => sERC20) public synthethicTokenId;
 
-    /// TODO: Should this be admin or SuperPositions?
-    modifier onlyAdmin() {
-        if (msg.sender != admin) {
-            revert("onlyAdmin: ACCESS_CONTROL");
-        }
-        _;
-    }
 
     /// @dev Access Control should be re-thinked
     constructor(IERC1155s superFormLp) {
-        /// TODO: TBD! Should we use SuperPositions or external admin account?
-        // admin = address(superFormLp);
-        admin = msg.sender;
         sERC1155 = superFormLp;
     }
 
-    /// @notice vaultId given here needs to be the same as vaultId on Source!
+    /// @notice superFormId given here needs to be the same as superFormId on Source!
     /// @dev Make sure its set for existing vaultIds only
-    /// @dev Ideally, this should be only called by SuperRouter
-    /// TODO: SuperRBAC? Who can registerWrapper? SuperPostions or 'external' Admin account?
-    /// @dev WARNING: vaultId cant be used for mapping, overwrite
+    /// @dev Ideally, this should be only called by SuperPositions (or other privileged contract)
     function registerWrapper(
-        uint256 vaultId,
+        uint256 superFormId,
         string memory name,
         string memory symbol,
         uint8 decimals
-    ) external onlyAdmin returns (sERC20) {
-        synthethicTokenId[vaultId] = new sERC20(name, symbol, decimals);
+    ) external virtual returns (sERC20) {
+        synthethicTokenId[superFormId] = new sERC20(name, symbol, decimals);
         /// @dev convienience for testing, prob no reason to return interface here
-        return synthethicTokenId[vaultId];
+        return synthethicTokenId[superFormId];
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -62,7 +49,7 @@ contract PositionsSplitter {
     function wrapBatch(
         uint256[] memory vaultIds,
         uint256[] memory amounts
-    ) external {
+    ) external virtual {
 
         /// @dev Use ERC1155 BatchTransfer to lower costs
         sERC1155.safeBatchTransferFrom(
@@ -74,6 +61,7 @@ contract PositionsSplitter {
         );
 
         // Note: Hook to SuperRouter, optional if we want to do something there
+        // Note: Maybe relevant in future for omnichain-token
         // sERC1155.unwrap(msg.sender, vaultIds, amounts);
 
         for (uint256 i = 0; i < vaultIds.length; i++) {
@@ -83,47 +71,17 @@ contract PositionsSplitter {
         emit WrappedBatch(msg.sender, vaultIds, amounts);
     }
 
-    function wrapBatchFor(
-        address user,
-        uint256[] memory vaultIds,
-        uint256[] memory amounts
-    ) external {
-        /// TODO: Add single approval logic! (prep for range approves)
-        require(
-            sERC1155.isApprovedForAll(user, address(this)),
-            "Error: Insufficient Approval"
-        );
-
-        /// @dev Use ERC1155 BatchTransfer to lower costs
-        sERC1155.safeBatchTransferFrom(
-            user,
-            address(this),
-            vaultIds,
-            amounts,
-            ""
-        );
-
-        // Note: Hook to SuperRouter, optional if we want to do something there
-        // sERC1155.unwrap(msg.sender, vaultIds, amounts);
-
-        address owner = user;
-        for (uint256 i = 0; i < vaultIds.length; i++) {
-            synthethicTokenId[vaultIds[i]].mint(owner, amounts[i]);
-        }
-
-        emit WrappedBatch(owner, vaultIds, amounts);
-    }
-
-    /// @notice Why we are not supporting wrapBack to ERC1155 with multiple ERC20 at once?
-    /// Note: Its actually problematic to do so, as ERC20 do not support batch ops (in contrary to ERC1155)
-    /// First, it needs for loop, and within this for loop each check (allowance) needs to pass
-    /// otherwise, we risk failing in the middle of transaction. Maybe just allow to wrapBack one-by-one?
+    /// @notice We are not supporting wrapBack to ERC1155 with multiple ERC20 at once.
+    /// Note: Its problematic to do so as ERC20 do not support batch ops (in contrary to ERC1155)
+    /// Requires unbouded for loop and within it each allowance check needs to pass
+    /// otherwise, we risk failing in the middle of transaction.
 
     /*///////////////////////////////////////////////////////////////
                             SINGLE ID OPERATIONS
     //////////////////////////////////////////////////////////////*/
 
-    function wrap(uint256 vaultId, uint256 amount) external {
+    /// ERC20.transfer()
+    function wrap(uint256 vaultId, uint256 amount) external virtual {
         /// @dev singleId approval required for this call to succeed
         /// Note: User needs to approve SharesSplitter first
         sERC1155.safeTransferFrom(
@@ -135,29 +93,16 @@ contract PositionsSplitter {
         );
 
         // Note: Hook to SuperRouter, optional if we want to do something there
+        // Note: Maybe relevant in future for omnichain-token
         // sERC1155.unwrap(msg.sender, vaultId, amount);
 
         synthethicTokenId[vaultId].mint(msg.sender, amount);
         emit Wrapped(msg.sender, vaultId, amount);
     }
 
-    function wrapFor(uint256 vaultId, address user, uint256 amount) external {
-        /// @dev singleId approval required to be issued for msg.sender for this call to succeed
-        /// Note: User needs to approve SharesSplitter first
-        sERC1155.safeTransferFrom(
-            user,
-            address(this),
-            syntheticTokenID,
-            amount,
-            ""
-        );
-
-        synthethicTokenId[vaultId].mint(user, amount);
-        emit Wrapped(user, vaultId, amount);
-    }
 
     /// @dev Callback to SuperRouter from here to re-mint ERC1155 on SuperRouter
-    function unwrap(uint256 vaultId, uint256 amount) external {
+    function unwrap(uint256 vaultId, uint256 amount) external virtual {
         sERC20 token = synthethicTokenId[vaultId];
 
         /// TODO: Test and validate
@@ -179,35 +124,6 @@ contract PositionsSplitter {
         );
 
         emit Unwrapped(msg.sender, vaultId, amount);
-    }
-
-    function unwrapFor(uint256 vaultId, address user, uint256 amount) external {
-        sERC20 token = synthethicTokenId[vaultId];
-
-        /// @dev How many tokens are allowed to be spent by msg sender on behalf of user
-        uint256 allowed = token.allowance(msg.sender, user);
-
-        /// TODO: Needs access to sERC20 to modify allowance if PositionSplitter is external contract
-        // if (allowed != type(uint256).max) allowance[from][msg.sender] = allowed - amount;
-
-        /// FIXME: THIS IS VULNERABLE, UNRESTRICTED BURN!!!
-        /// @dev No need to transfer to contract, we can burn for msg.sender
-        token.burn(user, amount);
-
-        /// @dev Hack to help with contract size limit on Source
-        uint256[] memory vaultIds = new uint256[](1);
-        uint256[] memory amounts = new uint256[](1);
-        vaultIds[0] = vaultId;
-        amounts[0] = amount;
-
-        /// @dev WIP. wrapBack accepts only arrays, we need to create one
-        sERC1155.safeBatchTransferFrom(
-            address(this),
-            user,
-            vaultIds,
-            amounts,
-            bytes("")
-        );
     }
 
     /*///////////////////////////////////////////////////////////////
