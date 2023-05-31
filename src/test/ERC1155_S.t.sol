@@ -2,7 +2,7 @@
 pragma solidity 0.8.19;
 
 import "forge-std/Test.sol";
-import "../src/mocks/MockERC1155s.sol";
+import {MockERC1155s} from "./mocks/MockERC1155s.sol";
 
 contract ERC1155STest is Test {
     MockERC1155s public SuperShares;

@@ -1,11 +1,11 @@
 /// SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.19;
 
-import "../IERC1155s.sol";
-import "../splitter/PositionsSplitter.sol";
+import {IERC1155s} from "../../interfaces/IERC1155s.sol";
+import {PositionsSplitter} from "../../splitter/PositionsSplitter.sol";
+import {sERC20} from "../../splitter/sERC20.sol";
 
 contract MockPositionsSplitter is PositionsSplitter {
-
     /// @dev Access Control for RegisterWrapper. SuperRBAC is used by SuperPositions child contract.
     address public admin;
 
@@ -16,6 +16,7 @@ contract MockPositionsSplitter is PositionsSplitter {
         }
         _;
     }
+
     constructor(IERC1155s superFormLp) PositionsSplitter(superFormLp) {
         admin = msg.sender;
     }
@@ -25,9 +26,8 @@ contract MockPositionsSplitter is PositionsSplitter {
         string memory name,
         string memory symbol,
         uint8 decimals
-    ) external onlyAdmin override returns (sERC20) {
+    ) external override onlyAdmin returns (sERC20) {
         synthethicTokenId[superFormId] = new sERC20(name, symbol, decimals);
         return synthethicTokenId[superFormId];
     }
-
 }

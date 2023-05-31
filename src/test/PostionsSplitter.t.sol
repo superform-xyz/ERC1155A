@@ -2,18 +2,17 @@
 pragma solidity 0.8.19;
 
 import "forge-std/Test.sol";
-import "../src/mocks/MockERC1155s.sol";
-import "../src/splitter/PositionsSplitter.sol";
-import "../src/mocks/MockPositionsSplitter.sol";
-import {ERC20} from "solmate/tokens/ERC20.sol";
-
 import "forge-std/console.sol";
+import {PositionsSplitter} from "../splitter/PositionsSplitter.sol";
+import {MockPositionsSplitter} from "./mocks/MockPositionsSplitter.sol";
+import {MockERC1155s} from "./mocks/MockERC1155s.sol";
+import {ERC20} from "solmate/tokens/ERC20.sol";
 
 contract PositionsSplitterTest is Test {
     uint256 public constant THOUSAND_E18 = 1000 ether;
 
     /// TODO: SuperRBAC
-    MockERC1155s public superShares;
+    MockERC1155s public superPositions;
     PositionsSplitter public positionsSplitter;
     ERC20 public syntheticERC20Token;
 
@@ -21,28 +20,20 @@ contract PositionsSplitterTest is Test {
     address public bob = address(0x0997);
 
     function setUp() public {
-        superShares = new MockERC1155s();
-        superShares.mint(alice, 1, THOUSAND_E18, "");
+        superPositions = new MockERC1155s();
+        superPositions.mint(alice, 1, THOUSAND_E18, "");
 
-        positionsSplitter = new MockPositionsSplitter(superShares);
-        syntheticERC20Token = positionsSplitter.registerWrapper(
-            1,
-            "SuperPosition Id 1",
-            "SS1",
-            18
-        );
+        positionsSplitter = new MockPositionsSplitter(superPositions);
+        syntheticERC20Token = positionsSplitter.registerWrapper(1, "SuperPosition Id 1", "SS1", 18);
     }
 
     function testWrapUnwrap() public {
         vm.startPrank(alice);
 
-        superShares.setApprovalForAll(address(positionsSplitter), true);
+        superPositions.setApprovalForAll(address(positionsSplitter), true);
         positionsSplitter.wrap(1, THOUSAND_E18);
-
-        assertEq(
-            superShares.balanceOf(address(positionsSplitter), 1),
-            THOUSAND_E18
-        );
+        assertEq(superPositions.balanceOf(alice, 1), 0);
+        assertEq(superPositions.balanceOf(address(positionsSplitter), 1), THOUSAND_E18);
 
         assertEq(syntheticERC20Token.balanceOf(alice), THOUSAND_E18);
 
@@ -53,10 +44,8 @@ contract PositionsSplitterTest is Test {
         /// NOTE: Test if 1:1 between 1155 and 20 always holds
         positionsSplitter.unwrap(1, sERC20Balance);
 
-        assertEq(superShares.balanceOf(alice, 1), THOUSAND_E18);
+        assertEq(superPositions.balanceOf(alice, 1), THOUSAND_E18);
 
         assertEq(syntheticERC20Token.balanceOf(address(positionsSplitter)), 0);
-
     }
-
 }

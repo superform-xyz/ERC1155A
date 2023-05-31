@@ -1,7 +1,7 @@
 /// SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.19;
 
-import {IERC1155s} from "./IERC1155s.sol";
+import {IERC1155s} from "./interfaces/IERC1155s.sol";
 import {Strings} from "./utils/Strings.sol";
 
 /**
@@ -11,7 +11,7 @@ import {Strings} from "./utils/Strings.sol";
  *
  * 1. Single id approve capability
  * 2. Allowance management for single id approve
- * 3. Metadata build out of baseURI and superformId uint value into offchain metadata address
+ * 3. Metadata build out of baseURI and id uint value into offchain metadata address
  *
  */
 
@@ -20,9 +20,8 @@ abstract contract ERC1155s is IERC1155s {
                              ERC1155s STORAGE
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice ERC20-like mapping for single id approvals. SuperForm specific.
-    mapping(address owner => mapping(address spender => mapping(uint256 id => uint256 amount)))
-        private allowances;
+    /// @notice ERC20-like mapping for single id approvals.
+    mapping(address owner => mapping(address spender => mapping(uint256 id => uint256 amount))) private allowances;
 
     /// @dev Implementation copied from solmate/ERC1155
     mapping(address => mapping(uint256 => uint256)) public balanceOf;
@@ -97,13 +96,8 @@ abstract contract ERC1155s is IERC1155s {
         require(
             to.code.length == 0
                 ? to != address(0)
-                : ERC1155TokenReceiver(to).onERC1155Received(
-                    operator,
-                    from,
-                    id,
-                    amount,
-                    data
-                ) == ERC1155TokenReceiver.onERC1155Received.selector,
+                : ERC1155TokenReceiver(to).onERC1155Received(operator, from, id, amount, data) ==
+                    ERC1155TokenReceiver.onERC1155Received.selector,
             "UNSAFE_RECIPIENT"
         );
     }
@@ -133,10 +127,7 @@ abstract contract ERC1155s is IERC1155s {
     ) public virtual override {
         require(ids.length == amounts.length, "LENGTH_MISMATCH");
 
-        require(
-            msg.sender == from || isApprovedForAll[from][msg.sender],
-            "NOT_AUTHORIZED"
-        );
+        require(msg.sender == from || isApprovedForAll[from][msg.sender], "NOT_AUTHORIZED");
 
         // Storing these outside the loop saves ~15 gas per iteration.
         uint256 id;
@@ -161,13 +152,8 @@ abstract contract ERC1155s is IERC1155s {
         require(
             to.code.length == 0
                 ? to != address(0)
-                : ERC1155TokenReceiver(to).onERC1155BatchReceived(
-                    msg.sender,
-                    from,
-                    ids,
-                    amounts,
-                    data
-                ) == ERC1155TokenReceiver.onERC1155BatchReceived.selector,
+                : ERC1155TokenReceiver(to).onERC1155BatchReceived(msg.sender, from, ids, amounts, data) ==
+                    ERC1155TokenReceiver.onERC1155BatchReceived.selector,
             "UNSAFE_RECIPIENT"
         );
     }
@@ -196,51 +182,30 @@ abstract contract ERC1155s is IERC1155s {
 
     /// @notice Public function for setting single id approval
     /// @dev Notice `owner` param, it will always be msg.sender, see _setApprovalForOne()
-    function setApprovalForOne(
-        address spender,
-        uint256 id,
-        uint256 amount
-    ) public virtual {
+    function setApprovalForOne(address spender, uint256 id, uint256 amount) public virtual {
         address owner = msg.sender;
         _setApprovalForOne(owner, spender, id, amount);
     }
 
     /// @notice Public getter for existing single id approval
     /// @dev Re-adapted from ERC20
-    function allowance(
-        address owner,
-        address spender,
-        uint256 id
-    ) public view virtual returns (uint256) {
+    function allowance(address owner, address spender, uint256 id) public view virtual returns (uint256) {
         return allowances[owner][spender][id];
     }
 
     /// @notice Public function for increasing single id approval amount
     /// @dev Re-adapted from ERC20
-    function increaseAllowance(
-        address spender,
-        uint256 id,
-        uint256 addedValue
-    ) public virtual returns (bool) {
+    function increaseAllowance(address spender, uint256 id, uint256 addedValue) public virtual returns (bool) {
         address owner = msg.sender;
         unchecked {
-            _setApprovalForOne(
-                owner,
-                spender,
-                id,
-                allowance(owner, spender, id) + addedValue
-            );
+            _setApprovalForOne(owner, spender, id, allowance(owner, spender, id) + addedValue);
         }
         return true;
     }
 
     /// @notice Public function for decreasing single id approval amount
     /// @dev Re-adapted from ERC20
-    function decreaseAllowance(
-        address spender,
-        uint256 id,
-        uint256 subtractedValue
-    ) public virtual returns (bool) {
+    function decreaseAllowance(address spender, uint256 id, uint256 subtractedValue) public virtual returns (bool) {
         address owner = msg.sender;
         return _decreaseAllowance(owner, spender, id, subtractedValue);
     }
@@ -256,17 +221,9 @@ abstract contract ERC1155s is IERC1155s {
         uint256 subtractedValue
     ) internal virtual returns (bool) {
         uint256 currentAllowance = allowance(owner, spender, id);
-        require(
-            currentAllowance >= subtractedValue,
-            "ERC20: decreased allowance below zero"
-        );
+        require(currentAllowance >= subtractedValue, "ERC20: decreased allowance below zero");
         unchecked {
-            _setApprovalForOne(
-                owner,
-                spender,
-                id,
-                currentAllowance - subtractedValue
-            );
+            _setApprovalForOne(owner, spender, id, currentAllowance - subtractedValue);
         }
 
         return true;
@@ -275,12 +232,7 @@ abstract contract ERC1155s is IERC1155s {
     /// @notice Internal function for setting single id approval
     /// @dev Used for fine-grained control over approvals with increase/decrease allowance
     /// @dev Notice `owner` param, only contract functions should be able to define it
-    function _setApprovalForOne(
-        address owner,
-        address spender,
-        uint256 id,
-        uint256 amount
-    ) internal virtual {
+    function _setApprovalForOne(address owner, address spender, uint256 id, uint256 amount) internal virtual {
         require(owner != address(0), "ERC20: approve from the zero address");
         require(spender != address(0), "ERC20: approve to the zero address");
         allowances[owner][spender][id] = amount;
@@ -292,12 +244,9 @@ abstract contract ERC1155s is IERC1155s {
     ///////////////////////////////////////////////////////////////////////////
 
     /// @notice See {IERC721Metadata-tokenURI}.
-    /// @dev Compute return string from baseURI set for this contract and unique vaultId
-    function uri(
-        uint256 superFormId
-    ) public view virtual returns (string memory) {
-        return
-            string(abi.encodePacked(_baseURI(), Strings.toString(superFormId)));
+    /// @dev Compute return string from baseURI set for this contract and unique id
+    function uri(uint256 id) public view virtual returns (string memory) {
+        return string(abi.encodePacked(_baseURI(), Strings.toString(id)));
     }
 
     /// @dev Used to construct return url
@@ -308,9 +257,7 @@ abstract contract ERC1155s is IERC1155s {
     //////////////////////////////////////////////////////////////*/
 
     /// @dev Implementation copied from solmate/ERC1155
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view virtual returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public view virtual returns (bool) {
         return
             interfaceId == 0x01ffc9a7 || // ERC165 Interface ID for ERC165
             interfaceId == 0xd9b67a26 || // ERC165 Interface ID for ERC1155
@@ -322,12 +269,7 @@ abstract contract ERC1155s is IERC1155s {
     //////////////////////////////////////////////////////////////*/
 
     /// @dev Implementation copied from solmate/ERC1155
-    function _mint(
-        address to,
-        uint256 id,
-        uint256 amount,
-        bytes memory data
-    ) internal virtual {
+    function _mint(address to, uint256 id, uint256 amount, bytes memory data) internal virtual {
         balanceOf[to][id] += amount;
 
         emit TransferSingle(msg.sender, address(0), to, id, amount);
@@ -335,13 +277,8 @@ abstract contract ERC1155s is IERC1155s {
         require(
             to.code.length == 0
                 ? to != address(0)
-                : ERC1155TokenReceiver(to).onERC1155Received(
-                    msg.sender,
-                    address(0),
-                    id,
-                    amount,
-                    data
-                ) == ERC1155TokenReceiver.onERC1155Received.selector,
+                : ERC1155TokenReceiver(to).onERC1155Received(msg.sender, address(0), id, amount, data) ==
+                    ERC1155TokenReceiver.onERC1155Received.selector,
             "UNSAFE_RECIPIENT"
         );
     }
@@ -372,23 +309,14 @@ abstract contract ERC1155s is IERC1155s {
         require(
             to.code.length == 0
                 ? to != address(0)
-                : ERC1155TokenReceiver(to).onERC1155BatchReceived(
-                    msg.sender,
-                    address(0),
-                    ids,
-                    amounts,
-                    data
-                ) == ERC1155TokenReceiver.onERC1155BatchReceived.selector,
+                : ERC1155TokenReceiver(to).onERC1155BatchReceived(msg.sender, address(0), ids, amounts, data) ==
+                    ERC1155TokenReceiver.onERC1155BatchReceived.selector,
             "UNSAFE_RECIPIENT"
         );
     }
 
     /// @dev Implementation copied from solmate/ERC1155
-    function _batchBurn(
-        address from,
-        uint256[] memory ids,
-        uint256[] memory amounts
-    ) internal virtual {
+    function _batchBurn(address from, uint256[] memory ids, uint256[] memory amounts) internal virtual {
         uint256 idsLength = ids.length; // Saves MLOADs.
 
         require(idsLength == amounts.length, "LENGTH_MISMATCH");
@@ -417,13 +345,7 @@ abstract contract ERC1155s is IERC1155s {
 /// @notice A generic interface for a contract which properly accepts ERC1155 tokens.
 /// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC1155.sol)
 abstract contract ERC1155TokenReceiver {
-    function onERC1155Received(
-        address,
-        address,
-        uint256,
-        uint256,
-        bytes calldata
-    ) external virtual returns (bytes4) {
+    function onERC1155Received(address, address, uint256, uint256, bytes calldata) external virtual returns (bytes4) {
         return ERC1155TokenReceiver.onERC1155Received.selector;
     }
 
