@@ -3,6 +3,7 @@ pragma solidity 0.8.19;
 
 import {IERC1155s} from "../interfaces/IERC1155s.sol";
 import {sERC20} from "./sERC20.sol";
+import "forge-std/console.sol";
 
 /// @title Positions Splitter
 /// @author Zeropoint Labs.
@@ -16,27 +17,30 @@ abstract contract PositionsSplitter {
     event Unwrapped(address user, uint256 id, uint256 amount);
     event UnwrappedBatch(address user, uint256[] ids, uint256[] amounts);
 
-    /// @dev SuperRouter synthethic underlying ERC1155 id => wrapped ERC20
-    /// @dev id => wrappedERC1155idERC20
-    mapping(uint256 id => sERC20) public synthethicTokenId;
+    error WRAPPER_ALREADY_REGISTERED();
 
-    /// @dev Access Control should be re-thinked
-    constructor(IERC1155s superFormLp) {
-        sERC1155 = superFormLp;
+    /// @dev id => wrappedERC1155idERC20
+    mapping(uint256 id => address syntheticToken) public synthethicTokenId;
+
+    constructor(IERC1155s erc1155s) {
+        sERC1155 = erc1155s;
     }
 
-    /// @notice superFormId given here needs to be the same as superFormId on Source!
+    /// @notice id given here needs to be the same as id on Source!
     /// @dev Make sure its set for existing ids only
     /// @dev Ideally, this should be only called by SuperPositions (or other privileged contract)
     function registerWrapper(
-        uint256 superFormId,
+        uint256 id,
         string memory name,
         string memory symbol,
         uint8 decimals
-    ) external virtual returns (sERC20) {
-        synthethicTokenId[superFormId] = new sERC20(name, symbol, decimals);
+    ) external virtual returns (address) {
+        if (synthethicTokenId[id] != address(0)) revert WRAPPER_ALREADY_REGISTERED();
+
+        address syntheticToken = address(new sERC20(name, symbol, decimals));
+        synthethicTokenId[id] = syntheticToken;
         /// @dev convienience for testing, prob no reason to return interface here
-        return synthethicTokenId[superFormId];
+        return synthethicTokenId[id];
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -54,7 +58,7 @@ abstract contract PositionsSplitter {
         // sERC1155.unwrap(msg.sender, ids, amounts);
 
         for (uint256 i = 0; i < ids.length; i++) {
-            synthethicTokenId[ids[i]].mint(msg.sender, amounts[i]);
+            sERC20(synthethicTokenId[ids[i]]).mint(msg.sender, amounts[i]);
         }
 
         emit WrappedBatch(msg.sender, ids, amounts);
@@ -79,15 +83,14 @@ abstract contract PositionsSplitter {
         // Note: Maybe relevant in future for omnichain-token
         // sERC1155.unwrap(msg.sender, id, amount);
 
-        synthethicTokenId[id].mint(msg.sender, amount);
+        sERC20(synthethicTokenId[id]).mint(msg.sender, amount);
         emit Wrapped(msg.sender, id, amount);
     }
 
     /// @dev Callback to SuperRouter from here to re-mint ERC1155 on SuperRouter
     function unwrap(uint256 id, uint256 amount) external virtual {
-        sERC20 token = synthethicTokenId[id];
+        sERC20 token = sERC20(synthethicTokenId[id]);
 
-        /// TODO: Test and validate
         /// @dev No need to transfer to contract, we can burn for msg.sender
         token.burn(msg.sender, amount);
 

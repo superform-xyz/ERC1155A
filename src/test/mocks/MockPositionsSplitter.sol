@@ -20,14 +20,4 @@ contract MockPositionsSplitter is PositionsSplitter {
     constructor(IERC1155s superFormLp) PositionsSplitter(superFormLp) {
         admin = msg.sender;
     }
-
-    function registerWrapper(
-        uint256 superFormId,
-        string memory name,
-        string memory symbol,
-        uint8 decimals
-    ) external override onlyAdmin returns (sERC20) {
-        synthethicTokenId[superFormId] = new sERC20(name, symbol, decimals);
-        return synthethicTokenId[superFormId];
-    }
 }

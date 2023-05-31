@@ -7,6 +7,7 @@ import {PositionsSplitter} from "../splitter/PositionsSplitter.sol";
 import {MockPositionsSplitter} from "./mocks/MockPositionsSplitter.sol";
 import {MockERC1155s} from "./mocks/MockERC1155s.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
+import {sERC20} from "../splitter/sERC20.sol";
 
 contract PositionsSplitterTest is Test {
     uint256 public constant THOUSAND_E18 = 1000 ether;
@@ -24,10 +25,11 @@ contract PositionsSplitterTest is Test {
         superPositions.mint(alice, 1, THOUSAND_E18, "");
 
         positionsSplitter = new MockPositionsSplitter(superPositions);
-        syntheticERC20Token = positionsSplitter.registerWrapper(1, "SuperPosition Id 1", "SS1", 18);
     }
 
     function testWrapUnwrap() public {
+        syntheticERC20Token = sERC20(positionsSplitter.registerWrapper(1, "SuperPosition Id 1", "SS1", 18));
+
         vm.startPrank(alice);
 
         superPositions.setApprovalForAll(address(positionsSplitter), true);
@@ -47,5 +49,12 @@ contract PositionsSplitterTest is Test {
         assertEq(superPositions.balanceOf(alice, 1), THOUSAND_E18);
 
         assertEq(syntheticERC20Token.balanceOf(address(positionsSplitter)), 0);
+    }
+
+    function xtestWrapperAlreadyRegistered() public {
+        syntheticERC20Token = sERC20(positionsSplitter.registerWrapper(1, "SuperPosition Id 1", "SS1", 18));
+
+        vm.expectRevert();
+        syntheticERC20Token = sERC20(positionsSplitter.registerWrapper(1, "SuperPosition Id 1", "SS1", 18));
     }
 }
