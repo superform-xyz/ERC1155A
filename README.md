@@ -8,32 +8,32 @@ You need foundry/forge to run repository.
 
 `forge test`
 
-Two set of tests are run. `ERC-1155s` specific and general `ERC-1155` tests forked from solmate's implementation of the standard. SuperForm's `ERC-1155s` has exactly the same interface as standard `ERC-1155` and expected behavior of functions follow EIP documentation. 
+Two set of tests are run. `ERC-1155s` specific and general `ERC-1155` tests forked from solmate's implementation of the standard. SuperForm's `ERC-1155s` has exactly the same interface as standard `ERC-1155` and expected behavior of functions follow EIP documentation.
 
 # Rationale
 
-ERC1155 `setApprovalForAll` function gives full spending permissions over all currently exisiting and future Ids. Addition of single Id approve, allows this token standard to improve composability through more better allowance control of funds. If external contract is an expected to spend only a single ERC1155 id there is no reason it should have access to all the user owned ids. 
+ERC1155 `setApprovalForAll` function gives full spending permissions over all currently exisiting and future Ids. Addition of single Id approve, allows this token standard to improve composability through more better allowance control of funds. If external contract is an expected to spend only a single ERC1155 id there is no reason it should have access to all the user owned ids.
 
 # Implementation Details
 
 Main change is how `ERC-1155s` implements `safeTransferFrom()` function. Standard ERC-115 implementations are checking only if caller `isApprovedForAll` or an owner of token ids. We propose `setApprovalForOne()` function allowing approvals for specific id in any amount. Therefore, id owner is no longer required to mass approve all of his token ids. The side effect of it is requirement of additional validation logic inside of `safeTransferFrom()` function.
 
-With gas effiency in mind and preservation of expected ERC-1155 behavior, ERC-1155s still prioritizes `isApprovedForAll` over `setApprovalForOne()`. Only `safeTransferFrom()` function works with single allowances, `safeBatchTransferFrom()` function requires owner to grant `setApprovalForAll()` to the operator. Decision is dictated by a significant gas costs overhead when required to decrease (or reset, in case of an overflow) allowances for each id in array. Moreover, if owner has `setApprovalForAll()` set to `true`, ERC-1155s contract will not modify existing single allowances during `safeTransferFrom()` and `safeBatchTransferFrom()` - assuming that owner has full trust in *operator* for granting mass approve. Therefore, ERC-1155s requires owners to manage their allowances individually and be mindfull of enabling `setApprovalForAll()` for external contracts.
+With gas effiency in mind and preservation of expected ERC-1155 behavior, ERC-1155s still prioritizes `isApprovedForAll` over `setApprovalForOne()`. Only `safeTransferFrom()` function works with single allowances, `safeBatchTransferFrom()` function requires owner to grant `setApprovalForAll()` to the operator. Decision is dictated by a significant gas costs overhead when required to decrease (or reset, in case of an overflow) allowances for each id in array. Moreover, if owner has `setApprovalForAll()` set to `true`, ERC-1155s contract will not modify existing single allowances during `safeTransferFrom()` and `safeBatchTransferFrom()` - assuming that owner has full trust in _operator_ for granting mass approve. Therefore, ERC-1155s requires owners to manage their allowances individually and be mindfull of enabling `setApprovalForAll()` for external contracts.
 
 # Allowances Flow of Execution
 
 Case 1: AllApproval + NO SingleApproval (standard 1155)
 
-Case 2: AllApproval + SingleApproval *(smaller than amount requested for transfer)*
+Case 2: AllApproval + SingleApproval _(smaller than amount requested for transfer)_
 
-Case 3: SingleApproval *(bigger than amount requested for transfer)* + AllApproval 
+Case 3: SingleApproval _(bigger than amount requested for transfer)_ + AllApproval
 
-Case 4: SingleApproval + NO AllApproval *(ERC20-like)*
+Case 4: SingleApproval + NO AllApproval _(ERC20-like)_
 
 Therefore, the possible execution flow with two independent set of approvals is as follows:
 
 If caller is owner of ids, transfer just executes.
- 
+
 If caller `singleApproved > transferAmount`, function executes and reduces allowance (even if setApproveForAll is true)
 
 If caller `singleApproved < transferAmount && isApprovedForAll`, function executes without reducing allowance (full trust assumed)
@@ -63,6 +63,4 @@ ERC-1155
 
 # Future Work
 
-TODO: https://eips.ethereum.org/EIPS/eip-1761 (suggested by 1155) - scope-based approvals
-
-TODO: Add SuperForm's PositionSplitter to this set of contracts
+TODO: https://eips.ethereum.org/EIPS/eip-1761 (suggested by 1155) - range-based approvals
