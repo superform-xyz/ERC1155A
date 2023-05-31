@@ -2,9 +2,7 @@
 pragma solidity 0.8.19;
 
 import "forge-std/Test.sol";
-import "forge-std/console.sol";
 import {PositionsSplitter} from "../splitter/PositionsSplitter.sol";
-import {MockPositionsSplitter} from "./mocks/MockPositionsSplitter.sol";
 import {MockERC1155s} from "./mocks/MockERC1155s.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {sERC20} from "../splitter/sERC20.sol";
@@ -12,7 +10,6 @@ import {sERC20} from "../splitter/sERC20.sol";
 contract PositionsSplitterTest is Test {
     uint256 public constant THOUSAND_E18 = 1000 ether;
 
-    /// TODO: SuperRBAC
     MockERC1155s public superPositions;
     PositionsSplitter public positionsSplitter;
     ERC20 public syntheticERC20Token;
@@ -24,7 +21,7 @@ contract PositionsSplitterTest is Test {
         superPositions = new MockERC1155s();
         superPositions.mint(alice, 1, THOUSAND_E18, "");
 
-        positionsSplitter = new MockPositionsSplitter(superPositions);
+        positionsSplitter = new PositionsSplitter(superPositions);
     }
 
     function testWrapUnwrap() public {
@@ -51,7 +48,7 @@ contract PositionsSplitterTest is Test {
         assertEq(syntheticERC20Token.balanceOf(address(positionsSplitter)), 0);
     }
 
-    function xtestWrapperAlreadyRegistered() public {
+    function testWrapperAlreadyRegistered() public {
         syntheticERC20Token = sERC20(positionsSplitter.registerWrapper(1, "SuperPosition Id 1", "SS1", 18));
 
         vm.expectRevert();

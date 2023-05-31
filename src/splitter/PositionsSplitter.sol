@@ -3,19 +3,17 @@ pragma solidity 0.8.19;
 
 import {IERC1155s} from "../interfaces/IERC1155s.sol";
 import {sERC20} from "./sERC20.sol";
-import "forge-std/console.sol";
+import {IPositionsSplitter} from "../interfaces/IPositionsSplitter.sol";
 
 /// @title Positions Splitter
 /// @author Zeropoint Labs.
 /// @dev allows users to split all or individual ids of ERC1155s into ERC20
-abstract contract PositionsSplitter {
-    IERC1155s public sERC1155;
-    uint256 public syntheticTokenID;
+contract PositionsSplitter is IPositionsSplitter {
+    IERC1155s public immutable sERC1155;
 
     event Wrapped(address user, uint256 id, uint256 amount);
     event WrappedBatch(address user, uint256[] ids, uint256[] amounts);
     event Unwrapped(address user, uint256 id, uint256 amount);
-    event UnwrappedBatch(address user, uint256[] ids, uint256[] amounts);
 
     error WRAPPER_ALREADY_REGISTERED();
 
@@ -26,15 +24,13 @@ abstract contract PositionsSplitter {
         sERC1155 = erc1155s;
     }
 
-    /// @notice id given here needs to be the same as id on Source!
-    /// @dev Make sure its set for existing ids only
-    /// @dev Ideally, this should be only called by SuperPositions (or other privileged contract)
+    /// @inheritdoc IPositionsSplitter
     function registerWrapper(
         uint256 id,
         string memory name,
         string memory symbol,
         uint8 decimals
-    ) external virtual returns (address) {
+    ) external override returns (address) {
         if (synthethicTokenId[id] != address(0)) revert WRAPPER_ALREADY_REGISTERED();
 
         address syntheticToken = address(new sERC20(name, symbol, decimals));
@@ -47,9 +43,8 @@ abstract contract PositionsSplitter {
                             MULTIPLE ID OPERATIONS
     //////////////////////////////////////////////////////////////*/
 
-    /// @notice Use ERC1155 BatchTransfer to wrap multiple ERC1155 ids into separate ERC20
-    /// Easier to wrap than to wrapBack because of ERC1155 beauty!
-    function wrapBatch(uint256[] memory ids, uint256[] memory amounts) external virtual {
+    /// @inheritdoc IPositionsSplitter
+    function wrapBatch(uint256[] memory ids, uint256[] memory amounts) external override {
         /// @dev Use ERC1155 BatchTransfer to lower costs
         sERC1155.safeBatchTransferFrom(msg.sender, address(this), ids, amounts, "");
 
@@ -73,8 +68,8 @@ abstract contract PositionsSplitter {
                             SINGLE ID OPERATIONS
     //////////////////////////////////////////////////////////////*/
 
-    /// ERC20.transfer()
-    function wrap(uint256 id, uint256 amount) external virtual {
+    /// @inheritdoc IPositionsSplitter
+    function wrap(uint256 id, uint256 amount) external override {
         /// @dev singleId approval required for this call to succeed
         /// Note: User needs to approve SharesSplitter first
         sERC1155.safeTransferFrom(msg.sender, address(this), id, amount, "");
@@ -87,8 +82,8 @@ abstract contract PositionsSplitter {
         emit Wrapped(msg.sender, id, amount);
     }
 
-    /// @dev Callback to SuperRouter from here to re-mint ERC1155 on SuperRouter
-    function unwrap(uint256 id, uint256 amount) external virtual {
+    /// @inheritdoc IPositionsSplitter
+    function unwrap(uint256 id, uint256 amount) external override {
         sERC20 token = sERC20(synthethicTokenId[id]);
 
         /// @dev No need to transfer to contract, we can burn for msg.sender

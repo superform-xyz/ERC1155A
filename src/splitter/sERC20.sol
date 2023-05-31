@@ -9,9 +9,11 @@ import {ERC20} from "solmate/tokens/ERC20.sol";
 contract sERC20 is ERC20 {
     address public immutable positionsSplitter;
 
+    error ONLY_POSITIONS_SPLITTER();
+
     modifier onlyPositionSplitter() {
         if (msg.sender != positionsSplitter) {
-            revert("sERC20: Only PositionSplitter");
+            revert ONLY_POSITIONS_SPLITTER();
         }
         _;
     }

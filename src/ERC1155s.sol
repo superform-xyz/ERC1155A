@@ -2,7 +2,7 @@
 pragma solidity 0.8.19;
 
 import {IERC1155s} from "./interfaces/IERC1155s.sol";
-import {Strings} from "./utils/Strings.sol";
+import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
 
 /**
  * @title ERC1155S
