@@ -1,26 +1,26 @@
 /// SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.19;
 
-import {IERC1155s} from "../interfaces/IERC1155s.sol";
+import {IERC1155A} from "../interfaces/IERC1155A.sol";
 import {sERC20} from "./sERC20.sol";
 import {ITransmuter} from "../interfaces/ITransmuter.sol";
 
 /// @title Transmuter
 /// @author Zeropoint Labs.
-/// @dev allows users to transmute all or individual ids of ERC1155s into synthetic ERC20s
+/// @dev allows users to transmute all or individual ids of ERC1155A into synthetic ERC20s
 contract Transmuter is ITransmuter {
-    IERC1155s public immutable sERC1155;
+    IERC1155A public immutable sERC1155;
 
     event TransmutedToERC20(address user, uint256 id, uint256 amount);
     event TransmutedBatchToERC20(address user, uint256[] ids, uint256[] amounts);
-    event TransmutedToERC1155s(address user, uint256 id, uint256 amount);
+    event TransmutedToERC1155A(address user, uint256 id, uint256 amount);
 
     error TRANSMUTER_ALREADY_REGISTERED();
 
     mapping(uint256 id => address syntheticToken) public synthethicTokenId;
 
-    constructor(IERC1155s erc1155s) {
-        sERC1155 = erc1155s;
+    constructor(IERC1155A erc1155A) {
+        sERC1155 = erc1155A;
     }
 
     /// @inheritdoc ITransmuter
@@ -74,7 +74,7 @@ contract Transmuter is ITransmuter {
     }
 
     /// @inheritdoc ITransmuter
-    function transmuteToERC1155s(uint256 id, uint256 amount) external override {
+    function transmuteToERC1155A(uint256 id, uint256 amount) external override {
         sERC20 token = sERC20(synthethicTokenId[id]);
 
         /// @dev No need to transfer to contract, we can burn for msg.sender
@@ -88,7 +88,7 @@ contract Transmuter is ITransmuter {
 
         sERC1155.safeBatchTransferFrom(address(this), msg.sender, ids, amounts, bytes(""));
 
-        emit TransmutedToERC1155s(msg.sender, id, amount);
+        emit TransmutedToERC1155A(msg.sender, id, amount);
     }
 
     /*///////////////////////////////////////////////////////////////

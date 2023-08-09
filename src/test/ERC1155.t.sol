@@ -4,10 +4,10 @@ pragma solidity 0.8.19;
 import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
 import {DSInvariantTest} from "solmate/test/utils/DSInvariantTest.sol";
 import {ERC1155TokenReceiver} from "solmate/tokens/ERC1155.sol";
-import {MockERC1155s} from "./mocks/MockERC1155s.sol";
+import {MockERC1155A} from "./mocks/MockERC1155A.sol";
 
 /**
- * @title ERC1155 Test Suite from Solmate re-adapted for ERC1155-S
+ * @title ERC1155 Test Suite from Solmate re-adapted for ERC1155A
  * @dev We preserve full expected functionality of ERC1155
  * original by @author - solmate
  * forked by @author - ZeroPointLabs
@@ -114,13 +114,13 @@ contract WrongReturnDataERC1155Recipient is ERC1155TokenReceiver {
 contract NonERC1155Recipient {}
 
 contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
-    MockERC1155s token;
+    MockERC1155A token;
 
     mapping(address => mapping(uint256 => uint256)) public userMintAmounts;
     mapping(address => mapping(uint256 => uint256)) public userTransferOrBurnAmounts;
 
     function setUp() public {
-        token = new MockERC1155s();
+        token = new MockERC1155A();
     }
 
     function testMintToEOA() public {

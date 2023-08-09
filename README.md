@@ -1,4 +1,4 @@
-# ERC-1155s - SuperForm's ERC-1155 Extension
+# ERC1155A - SuperForm's ERC-1155 Extension
 
 SuperForm implementation of ERC-1155 with extended approval logic. Allows token owners to execute single id approvals in place of mass approving all of the ERC-1155 ids to the spender.
 
@@ -8,7 +8,7 @@ You need foundry/forge to run repository.
 
 `forge test`
 
-Two set of tests are run. `ERC-1155s` specific and general `ERC-1155` tests forked from solmate's implementation of the standard. SuperForm's `ERC-1155s` has exactly the same interface as standard `ERC-1155` and expected behavior of functions follow EIP documentation.
+Two set of tests are run. `ERC1155A` specific and general `ERC1155` tests forked from solmate's implementation of the standard. SuperForm's `ERC1155A` has exactly the same interface as standard `ERC1155` and expected behavior of functions follow EIP documentation.
 
 # Rationale
 
@@ -16,9 +16,9 @@ ERC1155 `setApprovalForAll` function gives full spending permissions over all cu
 
 # Implementation Details
 
-Main change is how `ERC-1155s` implements `safeTransferFrom()` function. Standard ERC-115 implementations are checking only if caller `isApprovedForAll` or an owner of token ids. We propose `setApprovalForOne()` function allowing approvals for specific id in any amount. Therefore, id owner is no longer required to mass approve all of his token ids. The side effect of it is requirement of additional validation logic inside of `safeTransferFrom()` function.
+Main change is how `ERC1155A` implements `safeTransferFrom()` function. Standard ERC-1155 implementations are checking only if caller `isApprovedForAll` or an owner of token ids. We propose `setApprovalForOne()` function allowing approvals for specific id in any amount. Therefore, id owner is no longer required to mass approve all of his token ids. The side effect of it is requirement of additional validation logic inside of `safeTransferFrom()` function.
 
-With gas effiency in mind and preservation of expected ERC-1155 behavior, ERC-1155s still prioritizes `isApprovedForAll` over `setApprovalForOne()`. Only `safeTransferFrom()` function works with single allowances, `safeBatchTransferFrom()` function requires owner to grant `setApprovalForAll()` to the operator. Decision is dictated by a significant gas costs overhead when required to decrease (or reset, in case of an overflow) allowances for each id in array. Moreover, if owner has `setApprovalForAll()` set to `true`, ERC-1155s contract will not modify existing single allowances during `safeTransferFrom()` and `safeBatchTransferFrom()` - assuming that owner has full trust in _operator_ for granting mass approve. Therefore, ERC-1155s requires owners to manage their allowances individually and be mindfull of enabling `setApprovalForAll()` for external contracts.
+With gas effiency in mind and preservation of expected ERC1155 behavior, ERC1155A still prioritizes `isApprovedForAll` over `setApprovalForOne()`. Only `safeTransferFrom()` function works with single allowances, `safeBatchTransferFrom()` function requires owner to grant `setApprovalForAll()` to the operator. Decision is dictated by a significant gas costs overhead when required to decrease (or reset, in case of an overflow) allowances for each id in array. Moreover, if owner has `setApprovalForAll()` set to `true`, ERC1155A contract will not modify existing single allowances during `safeTransferFrom()` and `safeBatchTransferFrom()` - assuming that owner has full trust in _operator_ for granting mass approve. Therefore, ERC1155A requires owners to manage their allowances individually and be mindfull of enabling `setApprovalForAll()` for external contracts.
 
 # Allowances Flow of Execution
 
@@ -44,7 +44,7 @@ If caller only approvedForAll, function executes without reducing allowance (ful
 
 Additional approval logic validation makes SOME transfer operations more expensive. Here's how it looks by comparison to solmate ERC1155 standard implementation:
 
-ERC-1155S
+ERC1155A
 
 ```
 | safeBatchTransferFrom                            | 79432           | 79432 | 79432  | 79432 | 1       |

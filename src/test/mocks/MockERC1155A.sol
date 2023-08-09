@@ -1,12 +1,12 @@
 /// SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.19;
 
-import {ERC1155s} from "../../ERC1155s.sol";
+import {ERC1155A} from "../../ERC1155A.sol";
 import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
 
-/// @notice For test purpouses we open mint()/burn() functions of ERC1155s
-contract MockERC1155s is ERC1155s {
-    /// @dev See ../ERC1155s.sol
+/// @notice For test purpouses we open mint()/burn() functions of ERC1155A
+contract MockERC1155A is ERC1155A {
+    /// @dev See ../ERC1155A.sol
     function uri(uint256 superFormId) public pure override returns (string memory) {
         return string(abi.encodePacked(_baseURI(), Strings.toString(superFormId)));
     }

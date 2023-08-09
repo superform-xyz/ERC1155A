@@ -2,20 +2,20 @@
 pragma solidity 0.8.19;
 
 import "forge-std/Test.sol";
-import {MockERC1155s} from "./mocks/MockERC1155s.sol";
+import {MockERC1155A} from "./mocks/MockERC1155A.sol";
 
-contract ERC1155STest is Test {
-    MockERC1155s public SuperShares;
+contract ERC1155ATest is Test {
+    MockERC1155A public SuperShares;
     uint256 public constant THOUSAND_E18 = 1000 ether;
     address public alice = address(0x2137);
     address public bob = address(0x0997);
 
     function setUp() public {
-        SuperShares = new MockERC1155s();
+        SuperShares = new MockERC1155A();
         SuperShares.mint(alice, 1, THOUSAND_E18, "");
     }
 
-    /// @dev All possible approval combinations for ERC1155S
+    /// @dev All possible approval combinations for ERC1155A
     /// Case 1: AllApproval + NO SingleApproval (standard 1155)
     /// Case 2: AllApproval + SingleApproval (AllApproved tokens decrease SingleApprove too)
     /// Case 3: SingleApproval + NO AllApproval (decrease SingleApprove allowance)

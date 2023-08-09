@@ -1,12 +1,12 @@
 /// SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.19;
 
-import {IERC1155s} from "./interfaces/IERC1155s.sol";
+import {IERC1155A} from "./interfaces/IERC1155A.sol";
 import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
 
 /**
- * @title ERC1155S
- * @dev ERC1155S is a SuperForm specific extension for ERC1155.
+ * @title ERC1155A
+ * @dev ERC1155A is a proposed extension for ERC1155.
  * @dev Adapted solmate implementation, follows ERC1155 standard interface
  *
  * 1. Single id approve capability
@@ -15,7 +15,7 @@ import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
  *
  */
 
-abstract contract ERC1155s is IERC1155s {
+abstract contract ERC1155A is IERC1155A {
     /*//////////////////////////////////////////////////////////////
                              ERC1155s STORAGE
     //////////////////////////////////////////////////////////////*/
