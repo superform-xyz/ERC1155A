@@ -3,35 +3,34 @@ pragma solidity 0.8.19;
 
 import {IERC1155s} from "../interfaces/IERC1155s.sol";
 import {sERC20} from "./sERC20.sol";
-import {IPositionsSplitter} from "../interfaces/IPositionsSplitter.sol";
+import {ITransmuter} from "../interfaces/ITransmuter.sol";
 
-/// @title Positions Splitter
+/// @title Transmuter
 /// @author Zeropoint Labs.
-/// @dev allows users to split all or individual ids of ERC1155s into ERC20
-contract PositionsSplitter is IPositionsSplitter {
+/// @dev allows users to transmute all or individual ids of ERC1155s into synthetic ERC20s
+contract Transmuter is ITransmuter {
     IERC1155s public immutable sERC1155;
 
-    event Wrapped(address user, uint256 id, uint256 amount);
-    event WrappedBatch(address user, uint256[] ids, uint256[] amounts);
-    event Unwrapped(address user, uint256 id, uint256 amount);
+    event TransmutedToERC20(address user, uint256 id, uint256 amount);
+    event TransmutedBatchToERC20(address user, uint256[] ids, uint256[] amounts);
+    event TransmutedToERC1155s(address user, uint256 id, uint256 amount);
 
-    error WRAPPER_ALREADY_REGISTERED();
+    error TRANSMUTER_ALREADY_REGISTERED();
 
-    /// @dev id => wrappedERC1155idERC20
     mapping(uint256 id => address syntheticToken) public synthethicTokenId;
 
     constructor(IERC1155s erc1155s) {
         sERC1155 = erc1155s;
     }
 
-    /// @inheritdoc IPositionsSplitter
-    function registerWrapper(
+    /// @inheritdoc ITransmuter
+    function registerTransmuter(
         uint256 id,
         string memory name,
         string memory symbol,
         uint8 decimals
     ) external override returns (address) {
-        if (synthethicTokenId[id] != address(0)) revert WRAPPER_ALREADY_REGISTERED();
+        if (synthethicTokenId[id] != address(0)) revert TRANSMUTER_ALREADY_REGISTERED();
 
         address syntheticToken = address(new sERC20(name, symbol, decimals));
         synthethicTokenId[id] = syntheticToken;
@@ -43,23 +42,19 @@ contract PositionsSplitter is IPositionsSplitter {
                             MULTIPLE ID OPERATIONS
     //////////////////////////////////////////////////////////////*/
 
-    /// @inheritdoc IPositionsSplitter
-    function wrapBatch(uint256[] memory ids, uint256[] memory amounts) external override {
+    /// @inheritdoc ITransmuter
+    function transmuteBatchToERC20(uint256[] memory ids, uint256[] memory amounts) external override {
         /// @dev Use ERC1155 BatchTransfer to lower costs
         sERC1155.safeBatchTransferFrom(msg.sender, address(this), ids, amounts, "");
-
-        // Note: Hook to SuperRouter, optional if we want to do something there
-        // Note: Maybe relevant in future for omnichain-token
-        // sERC1155.unwrap(msg.sender, ids, amounts);
 
         for (uint256 i = 0; i < ids.length; i++) {
             sERC20(synthethicTokenId[ids[i]]).mint(msg.sender, amounts[i]);
         }
 
-        emit WrappedBatch(msg.sender, ids, amounts);
+        emit TransmutedBatchToERC20(msg.sender, ids, amounts);
     }
 
-    /// @notice We are not supporting wrapBack to ERC1155 with multiple ERC20 at once.
+    /// @notice We are not supporting transmuteBatchToERC1155 with multiple ERC20 at once.
     /// Note: Its problematic to do so as ERC20 do not support batch ops (in contrary to ERC1155)
     /// Requires unbouded for loop and within it each allowance check needs to pass
     /// otherwise, we risk failing in the middle of transaction.
@@ -68,22 +63,18 @@ contract PositionsSplitter is IPositionsSplitter {
                             SINGLE ID OPERATIONS
     //////////////////////////////////////////////////////////////*/
 
-    /// @inheritdoc IPositionsSplitter
-    function wrap(uint256 id, uint256 amount) external override {
+    /// @inheritdoc ITransmuter
+    function transmuteToERC20(uint256 id, uint256 amount) external override {
         /// @dev singleId approval required for this call to succeed
-        /// Note: User needs to approve SharesSplitter first
+        /// Note: User needs to approve Transmuter first
         sERC1155.safeTransferFrom(msg.sender, address(this), id, amount, "");
 
-        // Note: Hook to SuperRouter, optional if we want to do something there
-        // Note: Maybe relevant in future for omnichain-token
-        // sERC1155.unwrap(msg.sender, id, amount);
-
         sERC20(synthethicTokenId[id]).mint(msg.sender, amount);
-        emit Wrapped(msg.sender, id, amount);
+        emit TransmutedToERC20(msg.sender, id, amount);
     }
 
-    /// @inheritdoc IPositionsSplitter
-    function unwrap(uint256 id, uint256 amount) external override {
+    /// @inheritdoc ITransmuter
+    function transmuteToERC1155s(uint256 id, uint256 amount) external override {
         sERC20 token = sERC20(synthethicTokenId[id]);
 
         /// @dev No need to transfer to contract, we can burn for msg.sender
@@ -97,7 +88,7 @@ contract PositionsSplitter is IPositionsSplitter {
 
         sERC1155.safeBatchTransferFrom(address(this), msg.sender, ids, amounts, bytes(""));
 
-        emit Unwrapped(msg.sender, id, amount);
+        emit TransmutedToERC1155s(msg.sender, id, amount);
     }
 
     /*///////////////////////////////////////////////////////////////
