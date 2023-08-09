@@ -3,14 +3,14 @@ pragma solidity 0.8.19;
 
 import "forge-std/Test.sol";
 import {Transmuter} from "../transmuter/Transmuter.sol";
-import {MockERC1155s} from "./mocks/MockERC1155s.sol";
+import {MockERC1155A} from "./mocks/MockERC1155A.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {sERC20} from "../transmuter/sERC20.sol";
 
 contract TransmuterTest is Test {
     uint256 public constant THOUSAND_E18 = 1000 ether;
 
-    MockERC1155s public superPositions;
+    MockERC1155A public superPositions;
     Transmuter public transmuter;
     ERC20 public syntheticERC20Token;
 
@@ -18,7 +18,7 @@ contract TransmuterTest is Test {
     address public bob = address(0x0997);
 
     function setUp() public {
-        superPositions = new MockERC1155s();
+        superPositions = new MockERC1155A();
         superPositions.mint(alice, 1, THOUSAND_E18, "");
 
         transmuter = new Transmuter(superPositions);
@@ -41,7 +41,7 @@ contract TransmuterTest is Test {
         syntheticERC20Token.approve(address(transmuter), sERC20Balance);
 
         /// NOTE: Test if 1:1 between 1155 and 20 always holds
-        transmuter.transmuteToERC1155s(1, sERC20Balance);
+        transmuter.transmuteToERC1155A(1, sERC20Balance);
 
         assertEq(superPositions.balanceOf(alice, 1), THOUSAND_E18);
 
