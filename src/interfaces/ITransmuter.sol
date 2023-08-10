@@ -4,7 +4,7 @@ pragma solidity 0.8.19;
 interface ITransmuter {
     /// @notice id given here needs to be the same as id on Source!
     /// @dev Make sure its set for existing ids only
-    /// @dev Ideally, this should be only called by SuperPositions (or other privileged contract)
+    /// @dev Function set to virtual so that implementing protocols may introduce RBAC here or perform other changes
     /// @param id id of the ERC1155 to wrap
     /// @param name name of the ERC20 to create
     /// @param symbol symbol of the ERC20 to create

@@ -7,9 +7,9 @@ import {ITransmuter} from "../interfaces/ITransmuter.sol";
 
 /// @title Transmuter
 /// @author Zeropoint Labs.
-/// @dev allows users to transmute all or individual ids of ERC1155A into synthetic ERC20s
-contract Transmuter is ITransmuter {
-    IERC1155A public immutable sERC1155;
+/// @dev allows users to transmute all or individual ids of ERC1155s into synthetic ERC20s
+abstract contract Transmuter is ITransmuter {
+    IERC1155A public immutable ERC1155a;
 
     event TransmutedToERC20(address user, uint256 id, uint256 amount);
     event TransmutedBatchToERC20(address user, uint256[] ids, uint256[] amounts);
@@ -20,7 +20,7 @@ contract Transmuter is ITransmuter {
     mapping(uint256 id => address syntheticToken) public synthethicTokenId;
 
     constructor(IERC1155A erc1155A) {
-        sERC1155 = erc1155A;
+        ERC1155a = erc1155A;
     }
 
     /// @inheritdoc ITransmuter
@@ -29,7 +29,7 @@ contract Transmuter is ITransmuter {
         string memory name,
         string memory symbol,
         uint8 decimals
-    ) external override returns (address) {
+    ) external virtual override returns (address) {
         if (synthethicTokenId[id] != address(0)) revert TRANSMUTER_ALREADY_REGISTERED();
 
         address syntheticToken = address(new sERC20(name, symbol, decimals));
@@ -45,7 +45,7 @@ contract Transmuter is ITransmuter {
     /// @inheritdoc ITransmuter
     function transmuteBatchToERC20(uint256[] memory ids, uint256[] memory amounts) external override {
         /// @dev Use ERC1155 BatchTransfer to lower costs
-        sERC1155.safeBatchTransferFrom(msg.sender, address(this), ids, amounts, "");
+        ERC1155a.safeBatchTransferFrom(msg.sender, address(this), ids, amounts, "");
 
         for (uint256 i = 0; i < ids.length; i++) {
             sERC20(synthethicTokenId[ids[i]]).mint(msg.sender, amounts[i]);
@@ -67,7 +67,7 @@ contract Transmuter is ITransmuter {
     function transmuteToERC20(uint256 id, uint256 amount) external override {
         /// @dev singleId approval required for this call to succeed
         /// Note: User needs to approve Transmuter first
-        sERC1155.safeTransferFrom(msg.sender, address(this), id, amount, "");
+        ERC1155a.safeTransferFrom(msg.sender, address(this), id, amount, "");
 
         sERC20(synthethicTokenId[id]).mint(msg.sender, amount);
         emit TransmutedToERC20(msg.sender, id, amount);
@@ -86,7 +86,7 @@ contract Transmuter is ITransmuter {
         ids[0] = id;
         amounts[0] = amount;
 
-        sERC1155.safeBatchTransferFrom(address(this), msg.sender, ids, amounts, bytes(""));
+        ERC1155a.safeBatchTransferFrom(address(this), msg.sender, ids, amounts, bytes(""));
 
         emit TransmutedToERC1155A(msg.sender, id, amount);
     }
