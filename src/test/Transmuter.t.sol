@@ -2,7 +2,7 @@
 pragma solidity 0.8.19;
 
 import "forge-std/Test.sol";
-import {Transmuter} from "../transmuter/Transmuter.sol";
+import {MockTransmuter} from "./mocks/MockTransmuter.sol";
 import {MockERC1155A} from "./mocks/MockERC1155A.sol";
 import {ERC20} from "solmate/tokens/ERC20.sol";
 import {sERC20} from "../transmuter/sERC20.sol";
@@ -11,9 +11,10 @@ contract TransmuterTest is Test {
     uint256 public constant THOUSAND_E18 = 1000 ether;
 
     MockERC1155A public superPositions;
-    Transmuter public transmuter;
+    MockTransmuter public transmuter;
     ERC20 public syntheticERC20Token;
 
+    address public deployer = address(0x777);
     address public alice = address(0x2137);
     address public bob = address(0x0997);
 
@@ -21,10 +22,13 @@ contract TransmuterTest is Test {
         superPositions = new MockERC1155A();
         superPositions.mint(alice, 1, THOUSAND_E18, "");
 
-        transmuter = new Transmuter(superPositions);
+        vm.prank(deployer);
+        transmuter = new MockTransmuter(superPositions, deployer);
     }
 
     function testTransmute() public {
+        vm.prank(deployer);
+
         syntheticERC20Token = sERC20(transmuter.registerTransmuter(1, "SuperPosition Id 1", "SS1", 18));
 
         vm.startPrank(alice);
@@ -49,8 +53,10 @@ contract TransmuterTest is Test {
     }
 
     function testTransmuterAlreadyRegistered() public {
+        vm.prank(deployer);
         syntheticERC20Token = sERC20(transmuter.registerTransmuter(1, "SuperPosition Id 1", "SS1", 18));
 
+        vm.prank(deployer);
         vm.expectRevert();
         syntheticERC20Token = sERC20(transmuter.registerTransmuter(1, "SuperPosition Id 1", "SS1", 18));
     }
