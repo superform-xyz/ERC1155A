@@ -37,4 +37,15 @@ interface IERC1155A is IERC1155 {
 
     /// @dev Compute return string from baseURI set for this contract and unique vaultId
     function uri(uint256 superFormId) external view returns (string memory);
+
+    /*//////////////////////////////////////////////////////////////
+                            SUPPLY GETTERS 
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Public getter for existing single id total supply
+    function totalSupply(uint256 id) external view returns (uint256);
+
+    /// @notice Public getter to know if a token id exists
+    /// @dev determines based on total supply for the id
+    function exists(uint256 id) external view returns (bool);
 }

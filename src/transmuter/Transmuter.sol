@@ -24,12 +24,12 @@ abstract contract Transmuter is ITransmuter {
     }
 
     /// @inheritdoc ITransmuter
-    function registerTransmuter(
-        uint256 id,
-        string memory name,
-        string memory symbol,
-        uint8 decimals
-    ) external virtual override returns (address) {
+    function registerTransmuter(uint256 id, string memory name, string memory symbol, uint8 decimals)
+        external
+        virtual
+        override
+        returns (address)
+    {
         if (synthethicTokenId[id] != address(0)) revert TRANSMUTER_ALREADY_REGISTERED();
 
         address syntheticToken = address(new sERC20(name, symbol, decimals));
@@ -95,13 +95,11 @@ abstract contract Transmuter is ITransmuter {
                             ERC1155 HOOKS
     //////////////////////////////////////////////////////////////*/
 
-    function onERC1155Received(
-        address operator,
-        address from,
-        uint256 id,
-        uint256 value,
-        bytes calldata data
-    ) external pure returns (bytes4) {
+    function onERC1155Received(address operator, address from, uint256 id, uint256 value, bytes calldata data)
+        external
+        pure
+        returns (bytes4)
+    {
         return this.onERC1155Received.selector;
     }
 

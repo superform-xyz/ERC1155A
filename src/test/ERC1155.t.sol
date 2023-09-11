@@ -20,13 +20,11 @@ contract ERC1155Recipient is ERC1155TokenReceiver {
     uint256 public amount;
     bytes public mintData;
 
-    function onERC1155Received(
-        address _operator,
-        address _from,
-        uint256 _id,
-        uint256 _amount,
-        bytes calldata _data
-    ) public override returns (bytes4) {
+    function onERC1155Received(address _operator, address _from, uint256 _id, uint256 _amount, bytes calldata _data)
+        public
+        override
+        returns (bytes4)
+    {
         operator = _operator;
         from = _from;
         id = _id;
@@ -68,45 +66,41 @@ contract ERC1155Recipient is ERC1155TokenReceiver {
 }
 
 contract RevertingERC1155Recipient is ERC1155TokenReceiver {
-    function onERC1155Received(
-        address,
-        address,
-        uint256,
-        uint256,
-        bytes calldata
-    ) public pure override returns (bytes4) {
+    function onERC1155Received(address, address, uint256, uint256, bytes calldata)
+        public
+        pure
+        override
+        returns (bytes4)
+    {
         revert(string(abi.encodePacked(ERC1155TokenReceiver.onERC1155Received.selector)));
     }
 
-    function onERC1155BatchReceived(
-        address,
-        address,
-        uint256[] calldata,
-        uint256[] calldata,
-        bytes calldata
-    ) external pure override returns (bytes4) {
+    function onERC1155BatchReceived(address, address, uint256[] calldata, uint256[] calldata, bytes calldata)
+        external
+        pure
+        override
+        returns (bytes4)
+    {
         revert(string(abi.encodePacked(ERC1155TokenReceiver.onERC1155BatchReceived.selector)));
     }
 }
 
 contract WrongReturnDataERC1155Recipient is ERC1155TokenReceiver {
-    function onERC1155Received(
-        address,
-        address,
-        uint256,
-        uint256,
-        bytes calldata
-    ) public pure override returns (bytes4) {
+    function onERC1155Received(address, address, uint256, uint256, bytes calldata)
+        public
+        pure
+        override
+        returns (bytes4)
+    {
         return 0xCAFEBEEF;
     }
 
-    function onERC1155BatchReceived(
-        address,
-        address,
-        uint256[] calldata,
-        uint256[] calldata,
-        bytes calldata
-    ) external pure override returns (bytes4) {
+    function onERC1155BatchReceived(address, address, uint256[] calldata, uint256[] calldata, bytes calldata)
+        external
+        pure
+        override
+        returns (bytes4)
+    {
         return 0xCAFEBEEF;
     }
 }
@@ -116,6 +110,7 @@ contract NonERC1155Recipient {}
 contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
     MockERC1155A token;
 
+    mapping(uint256 => uint256) public supplyAmounts;
     mapping(address => mapping(uint256 => uint256)) public userMintAmounts;
     mapping(address => mapping(uint256 => uint256)) public userTransferOrBurnAmounts;
 
@@ -858,12 +853,9 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
         assertBytesEq(to.mintData(), mintData);
     }
 
-    function testBatchMintToEOA(
-        address to,
-        uint256[] memory ids,
-        uint256[] memory amounts,
-        bytes memory mintData
-    ) public {
+    function testBatchMintToEOA(address to, uint256[] memory ids, uint256[] memory amounts, bytes memory mintData)
+        public
+    {
         if (to == address(0)) to = address(0xBEEF);
 
         if (uint256(uint160(to)) <= 18 || to.code.length > 0) return;
@@ -895,11 +887,9 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
         }
     }
 
-    function testBatchMintToERC1155Recipient(
-        uint256[] memory ids,
-        uint256[] memory amounts,
-        bytes memory mintData
-    ) public {
+    function testBatchMintToERC1155Recipient(uint256[] memory ids, uint256[] memory amounts, bytes memory mintData)
+        public
+    {
         ERC1155Recipient to = new ERC1155Recipient();
 
         uint256 minLength = min2(ids.length, amounts.length);
@@ -1199,16 +1189,16 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
             uint256 id = ids[i];
             address to = tos[i] == address(0) || tos[i].code.length > 0 ? address(0xBEEF) : tos[i];
 
-            uint256 remainingMintAmountForId = type(uint256).max - userMintAmounts[to][id];
+            uint256 remainingMintAmountForId = type(uint256).max - supplyAmounts[id];
 
             normalizedTos[i] = to;
             normalizedIds[i] = id;
 
             uint256 mintAmount = bound(amounts[i], 0, remainingMintAmountForId);
-
+            uint256 supplyBefore = token.totalSupply(id);
             token.mint(to, id, mintAmount, mintData);
-
-            userMintAmounts[to][id] += mintAmount;
+            assertEq(supplyBefore + mintAmount, token.totalSupply(id));
+            supplyAmounts[id] += mintAmount;
         }
 
         uint256[] memory balances = token.balanceOfBatch(normalizedTos, normalizedIds);
@@ -1230,11 +1220,9 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
         token.mint(address(new RevertingERC1155Recipient()), id, mintAmount, mintData);
     }
 
-    function testFailMintToWrongReturnDataERC155Recipient(
-        uint256 id,
-        uint256 mintAmount,
-        bytes memory mintData
-    ) public {
+    function testFailMintToWrongReturnDataERC155Recipient(uint256 id, uint256 mintAmount, bytes memory mintData)
+        public
+    {
         token.mint(address(new RevertingERC1155Recipient()), id, mintAmount, mintData);
     }
 
@@ -1322,11 +1310,7 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
 
         token.mint(address(this), id, mintAmount, mintData);
         token.safeTransferFrom(
-            address(this),
-            address(new RevertingERC1155Recipient()),
-            id,
-            transferAmount,
-            transferData
+            address(this), address(new RevertingERC1155Recipient()), id, transferAmount, transferData
         );
     }
 
@@ -1341,11 +1325,7 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
 
         token.mint(address(this), id, mintAmount, mintData);
         token.safeTransferFrom(
-            address(this),
-            address(new WrongReturnDataERC1155Recipient()),
-            id,
-            transferAmount,
-            transferData
+            address(this), address(new WrongReturnDataERC1155Recipient()), id, transferAmount, transferData
         );
     }
 
@@ -1464,11 +1444,7 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
         token.setApprovalForAll(address(this), true);
 
         token.safeBatchTransferFrom(
-            from,
-            address(new NonERC1155Recipient()),
-            normalizedIds,
-            normalizedTransferAmounts,
-            transferData
+            from, address(new NonERC1155Recipient()), normalizedIds, normalizedTransferAmounts, transferData
         );
     }
 
@@ -1508,11 +1484,7 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
         token.setApprovalForAll(address(this), true);
 
         token.safeBatchTransferFrom(
-            from,
-            address(new RevertingERC1155Recipient()),
-            normalizedIds,
-            normalizedTransferAmounts,
-            transferData
+            from, address(new RevertingERC1155Recipient()), normalizedIds, normalizedTransferAmounts, transferData
         );
     }
 
@@ -1552,11 +1524,7 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
         token.setApprovalForAll(address(this), true);
 
         token.safeBatchTransferFrom(
-            from,
-            address(new WrongReturnDataERC1155Recipient()),
-            normalizedIds,
-            normalizedTransferAmounts,
-            transferData
+            from, address(new WrongReturnDataERC1155Recipient()), normalizedIds, normalizedTransferAmounts, transferData
         );
     }
 

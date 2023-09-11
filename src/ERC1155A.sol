@@ -19,6 +19,8 @@ abstract contract ERC1155A is IERC1155A {
     /*//////////////////////////////////////////////////////////////
                              ERC1155s STORAGE
     //////////////////////////////////////////////////////////////*/
+    /// @notice ERC20-like mapping for single id supply.
+    mapping(uint256 => uint256) public _totalSupply;
 
     /// @notice ERC20-like mapping for single id approvals.
     mapping(address owner => mapping(address spender => mapping(uint256 id => uint256 amount))) private allowances;
@@ -39,13 +41,11 @@ abstract contract ERC1155A is IERC1155A {
     /// @dev If caller singleApproved < transferAmount && isApprovedForAll, function executes without reducing allowance (full trust assumed)
     /// @dev If caller only approvedForAll, function executes without reducing allowance (full trust assumed)
     /// @dev SingleApprove is senior in execution flow, but isApprovedForAll is senior in allowance management
-    function safeTransferFrom(
-        address from,
-        address to,
-        uint256 id,
-        uint256 amount,
-        bytes calldata data
-    ) public virtual override {
+    function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes calldata data)
+        public
+        virtual
+        override
+    {
         address operator = msg.sender;
         uint256 allowed = allowances[from][operator][id];
 
@@ -96,8 +96,8 @@ abstract contract ERC1155A is IERC1155A {
         require(
             to.code.length == 0
                 ? to != address(0)
-                : ERC1155TokenReceiver(to).onERC1155Received(operator, from, id, amount, data) ==
-                    ERC1155TokenReceiver.onERC1155Received.selector,
+                : ERC1155TokenReceiver(to).onERC1155Received(operator, from, id, amount, data)
+                    == ERC1155TokenReceiver.onERC1155Received.selector,
             "UNSAFE_RECIPIENT"
         );
     }
@@ -133,7 +133,7 @@ abstract contract ERC1155A is IERC1155A {
         uint256 id;
         uint256 amount;
 
-        for (uint256 i = 0; i < ids.length; ) {
+        for (uint256 i = 0; i < ids.length;) {
             id = ids[i];
             amount = amounts[i];
 
@@ -152,17 +152,19 @@ abstract contract ERC1155A is IERC1155A {
         require(
             to.code.length == 0
                 ? to != address(0)
-                : ERC1155TokenReceiver(to).onERC1155BatchReceived(msg.sender, from, ids, amounts, data) ==
-                    ERC1155TokenReceiver.onERC1155BatchReceived.selector,
+                : ERC1155TokenReceiver(to).onERC1155BatchReceived(msg.sender, from, ids, amounts, data)
+                    == ERC1155TokenReceiver.onERC1155BatchReceived.selector,
             "UNSAFE_RECIPIENT"
         );
     }
 
     /// @dev Implementation copied from solmate/ERC1155
-    function balanceOfBatch(
-        address[] calldata owners,
-        uint256[] calldata ids
-    ) public view virtual returns (uint256[] memory balances) {
+    function balanceOfBatch(address[] calldata owners, uint256[] calldata ids)
+        public
+        view
+        virtual
+        returns (uint256[] memory balances)
+    {
         require(owners.length == ids.length, "LENGTH_MISMATCH");
 
         balances = new uint256[](owners.length);
@@ -214,12 +216,11 @@ abstract contract ERC1155A is IERC1155A {
     /// @dev Only to be used by address(this)
     /// @dev Notice `owner` param, only contract functions should be able to define it
     /// @dev Re-adapted from ERC20
-    function _decreaseAllowance(
-        address owner,
-        address spender,
-        uint256 id,
-        uint256 subtractedValue
-    ) internal virtual returns (bool) {
+    function _decreaseAllowance(address owner, address spender, uint256 id, uint256 subtractedValue)
+        internal
+        virtual
+        returns (bool)
+    {
         uint256 currentAllowance = allowance(owner, spender, id);
         require(currentAllowance >= subtractedValue, "ERC20: decreased allowance below zero");
         unchecked {
@@ -252,16 +253,29 @@ abstract contract ERC1155A is IERC1155A {
     /// @dev Used to construct return url
     function _baseURI() internal view virtual returns (string memory);
 
+    ///////////////////////////////////////////////////////////////////////////
+    ///                        SUPPLY GETTERS                               ///
+    ///////////////////////////////////////////////////////////////////////////
+
+    /// @notice See {IERC1155A-totalSupply}
+    function totalSupply(uint256 id) external view virtual returns (uint256) {
+        return _totalSupply[id];
+    }
+
+    /// @notice See {IERC1155A-exists}
+    function exists(uint256 id) external view virtual returns (bool) {
+        return _totalSupply[id] > 0;
+    }
+
     /*//////////////////////////////////////////////////////////////
                               ERC165 LOGIC
     //////////////////////////////////////////////////////////////*/
 
     /// @dev Implementation copied from solmate/ERC1155
     function supportsInterface(bytes4 interfaceId) public view virtual returns (bool) {
-        return
-            interfaceId == 0x01ffc9a7 || // ERC165 Interface ID for ERC165
-            interfaceId == 0xd9b67a26 || // ERC165 Interface ID for ERC1155
-            interfaceId == 0x0e89341c; // ERC165 Interface ID for ERC1155MetadataURI
+        return interfaceId == 0x01ffc9a7 // ERC165 Interface ID for ERC165
+            || interfaceId == 0xd9b67a26 // ERC165 Interface ID for ERC1155
+            || interfaceId == 0x0e89341c; // ERC165 Interface ID for ERC1155MetadataURI
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -271,31 +285,31 @@ abstract contract ERC1155A is IERC1155A {
     /// @dev Implementation copied from solmate/ERC1155
     function _mint(address to, uint256 id, uint256 amount, bytes memory data) internal virtual {
         balanceOf[to][id] += amount;
+        _totalSupply[id] += amount;
 
         emit TransferSingle(msg.sender, address(0), to, id, amount);
 
         require(
             to.code.length == 0
                 ? to != address(0)
-                : ERC1155TokenReceiver(to).onERC1155Received(msg.sender, address(0), id, amount, data) ==
-                    ERC1155TokenReceiver.onERC1155Received.selector,
+                : ERC1155TokenReceiver(to).onERC1155Received(msg.sender, address(0), id, amount, data)
+                    == ERC1155TokenReceiver.onERC1155Received.selector,
             "UNSAFE_RECIPIENT"
         );
     }
 
     /// @dev Implementation copied from solmate/ERC1155
-    function _batchMint(
-        address to,
-        uint256[] memory ids,
-        uint256[] memory amounts,
-        bytes memory data
-    ) internal virtual {
+    function _batchMint(address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data)
+        internal
+        virtual
+    {
         uint256 idsLength = ids.length; // Saves MLOADs.
 
         require(idsLength == amounts.length, "LENGTH_MISMATCH");
 
-        for (uint256 i = 0; i < idsLength; ) {
+        for (uint256 i = 0; i < idsLength;) {
             balanceOf[to][ids[i]] += amounts[i];
+            _totalSupply[ids[i]] += amounts[i];
 
             // An array can't have a total length
             // larger than the max uint256 value.
@@ -309,8 +323,8 @@ abstract contract ERC1155A is IERC1155A {
         require(
             to.code.length == 0
                 ? to != address(0)
-                : ERC1155TokenReceiver(to).onERC1155BatchReceived(msg.sender, address(0), ids, amounts, data) ==
-                    ERC1155TokenReceiver.onERC1155BatchReceived.selector,
+                : ERC1155TokenReceiver(to).onERC1155BatchReceived(msg.sender, address(0), ids, amounts, data)
+                    == ERC1155TokenReceiver.onERC1155BatchReceived.selector,
             "UNSAFE_RECIPIENT"
         );
     }
@@ -321,8 +335,9 @@ abstract contract ERC1155A is IERC1155A {
 
         require(idsLength == amounts.length, "LENGTH_MISMATCH");
 
-        for (uint256 i = 0; i < idsLength; ) {
+        for (uint256 i = 0; i < idsLength;) {
             balanceOf[from][ids[i]] -= amounts[i];
+            _totalSupply[ids[i]] -= amounts[i];
 
             // An array can't have a total length
             // larger than the max uint256 value.
@@ -337,6 +352,7 @@ abstract contract ERC1155A is IERC1155A {
     /// @dev Implementation copied from solmate/ERC1155
     function _burn(address from, uint256 id, uint256 amount) internal virtual {
         balanceOf[from][id] -= amount;
+        _totalSupply[id] -= amount;
 
         emit TransferSingle(msg.sender, from, address(0), id, amount);
     }
@@ -349,13 +365,11 @@ abstract contract ERC1155TokenReceiver {
         return ERC1155TokenReceiver.onERC1155Received.selector;
     }
 
-    function onERC1155BatchReceived(
-        address,
-        address,
-        uint256[] calldata,
-        uint256[] calldata,
-        bytes calldata
-    ) external virtual returns (bytes4) {
+    function onERC1155BatchReceived(address, address, uint256[] calldata, uint256[] calldata, bytes calldata)
+        external
+        virtual
+        returns (bytes4)
+    {
         return ERC1155TokenReceiver.onERC1155BatchReceived.selector;
     }
 }

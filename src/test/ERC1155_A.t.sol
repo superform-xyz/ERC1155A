@@ -70,8 +70,10 @@ contract ERC1155ATest is Test {
     }
 
     function testFailNotEnoughSingleAllowance() public {
-        uint256 transferAmount = (THOUSAND_E18 / 2); /// 500
-        uint256 allowSingle = (THOUSAND_E18 / 4); /// 250
+        uint256 transferAmount = (THOUSAND_E18 / 2);
+        /// 500
+        uint256 allowSingle = (THOUSAND_E18 / 4);
+        /// 250
 
         vm.startPrank(alice);
         SuperShares.setApprovalForOne(bob, 1, allowSingle);
