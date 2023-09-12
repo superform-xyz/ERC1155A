@@ -9,12 +9,9 @@ interface ITransmuter {
     /// @param name name of the ERC20 to create
     /// @param symbol symbol of the ERC20 to create
     /// @param decimals decimals of the ERC20 to create
-    function registerTransmuter(
-        uint256 id,
-        string memory name,
-        string memory symbol,
-        uint8 decimals
-    ) external returns (address);
+    function registerTransmuter(uint256 id, string memory name, string memory symbol, uint8 decimals)
+        external
+        returns (address);
 
     /// @notice Use ERC1155 BatchTransfer to transmute multiple ERC1155 ids into separate ERC20
     /// Easier to transmute to 1155A than to transmute back to erc20 because of ERC1155 beauty!
