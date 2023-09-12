@@ -137,7 +137,7 @@ abstract contract ERC1155A is IERC1155A {
         uint256 id;
         uint256 amount;
 
-        for (uint256 i = 0; i < len;) {
+        for (uint256 i; i < len;) {
             id = ids[i];
             amount = amounts[i];
 
@@ -398,13 +398,30 @@ abstract contract ERC1155A is IERC1155A {
 
     /// @dev Implementation copied from solmate/ERC1155
     function _batchBurn(address from, uint256[] memory ids, uint256[] memory amounts) internal virtual {
+        bool singleApproval;
         uint256 idsLength = ids.length; // Saves MLOADs.
+
+        /// @dev case to handle single id / multi id approvals
+        if (msg.sender != from && !isApprovedForAll[from][msg.sender]) {
+            singleApproval = true;
+        }
 
         require(idsLength == amounts.length, "LENGTH_MISMATCH");
 
+        uint256 id;
+        uint256 amount;
+
         for (uint256 i = 0; i < idsLength;) {
-            balanceOf[from][ids[i]] -= amounts[i];
-            _totalSupply[ids[i]] -= amounts[i];
+            id = ids[i];
+            amount = amounts[i];
+
+            if (singleApproval) {
+                require(allowance(from, msg.sender, id) >= amount, "NOT_AUTHORIZED");
+                allowances[from][msg.sender][id] -= amount;
+            }
+
+            balanceOf[from][id] -= amount;
+            _totalSupply[id] -= amount;
 
             // An array can't have a total length
             // larger than the max uint256 value.
@@ -418,7 +435,12 @@ abstract contract ERC1155A is IERC1155A {
 
     /// @dev Implementation copied from solmate/ERC1155
     function _burn(address from, uint256 id, uint256 amount) internal virtual {
+        if (msg.sender != from && !isApprovedForAll[from][msg.sender]) {
+            require(allowance(from, msg.sender, id) >= amount, "NOT_AUTHORIZED");
+        }
+
         balanceOf[from][id] -= amount;
+        allowances[from][msg.sender][id] -= amount;
         _totalSupply[id] -= amount;
 
         emit TransferSingle(msg.sender, from, address(0), id, amount);
