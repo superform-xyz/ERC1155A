@@ -32,6 +32,26 @@ interface IERC1155A is IERC1155 {
     function decreaseAllowance(address spender, uint256 id, uint256 subtractedValue) external returns (bool);
 
     /*//////////////////////////////////////////////////////////////
+                              MULTI APPROVE
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Public function for setting multiple id approval
+    /// @dev extension of sigle id approval
+    function setApprovalForMany(address spender, uint256[] memory ids, uint256[] memory amounts) external;
+
+    /// @notice Public function for increasing multiple id approval amount at once
+    /// @dev extension of single id increase allowance
+    function increaseAllowanceForMany(address spender, uint256[] memory ids, uint256[] memory addedValues)
+        external
+        returns (bool);
+
+    /// @notice Public function for decreasing multiple id approval amount at once
+    /// @dev extension of single id decrease allowance
+    function decreaseAllowanceForMany(address spender, uint256[] memory ids, uint256[] memory subtractedValues)
+        external
+        returns (bool);
+
+    /*//////////////////////////////////////////////////////////////
                                 METADATA 
     //////////////////////////////////////////////////////////////*/
 

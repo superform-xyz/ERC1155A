@@ -116,8 +116,6 @@ abstract contract ERC1155A is IERC1155A {
     /// @dev Implementation copied from solmate/ERC1155
     /// @dev Ignores single id approvals. Works only with setApprovalForAll.
     /// @dev Assumption is that BatchTransfers are supposed to be gas-efficient
-    /// @dev Assumption is that ApprovedForAll operator is also trusted for any other allowance amount existing as singleApprove
-    /// TODO: Additional option may be range-based approvals
     function safeBatchTransferFrom(
         address from,
         address to,
@@ -125,17 +123,28 @@ abstract contract ERC1155A is IERC1155A {
         uint256[] calldata amounts,
         bytes calldata data
     ) public virtual override {
-        require(ids.length == amounts.length, "LENGTH_MISMATCH");
+        bool singleApproval;
+        uint256 len = ids.length;
 
-        require(msg.sender == from || isApprovedForAll[from][msg.sender], "NOT_AUTHORIZED");
+        require(len == amounts.length, "LENGTH_MISMATCH");
+
+        /// @dev case to handle single id / multi id approvals
+        if (msg.sender != from && !isApprovedForAll[from][msg.sender]) {
+            singleApproval = true;
+        }
 
         // Storing these outside the loop saves ~15 gas per iteration.
         uint256 id;
         uint256 amount;
 
-        for (uint256 i = 0; i < ids.length;) {
+        for (uint256 i; i < len;) {
             id = ids[i];
             amount = amounts[i];
+
+            if (singleApproval) {
+                require(allowance(from, msg.sender, id) >= amount, "NOT_AUTHORIZED");
+                allowances[from][to][id] -= amount;
+            }
 
             balanceOf[from][id] -= amount;
             balanceOf[to][id] += amount;
@@ -210,6 +219,64 @@ abstract contract ERC1155A is IERC1155A {
     function decreaseAllowance(address spender, uint256 id, uint256 subtractedValue) public virtual returns (bool) {
         address owner = msg.sender;
         return _decreaseAllowance(owner, spender, id, subtractedValue);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    ///                     MULTI APPROVE SECTION                           ///
+    ///////////////////////////////////////////////////////////////////////////
+
+    /// @notice Public function for setting multiple id approval
+    /// @dev extension of sigle id approval
+    function setApprovalForMany(address spender, uint256[] memory ids, uint256[] memory amounts) public virtual {
+        address owner = msg.sender;
+
+        for (uint256 i; i < ids.length;) {
+            _setApprovalForOne(owner, spender, ids[i], amounts[i]);
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /// @notice Public function for increasing multiple id approval amount at once
+    /// @dev extension of single id increase allowance
+    function increaseAllowanceForMany(address spender, uint256[] memory ids, uint256[] memory addedValues)
+        public
+        virtual
+        returns (bool)
+    {
+        address owner = msg.sender;
+
+        for (uint256 i; i < ids.length;) {
+            uint256 id = ids[i];
+            unchecked {
+                _setApprovalForOne(owner, spender, id, allowance(owner, spender, id) + addedValues[i]);
+                ++i;
+            }
+        }
+
+        return true;
+    }
+
+    /// @notice Public function for decreasing multiple id approval amount at once
+    /// @dev extension of single id decrease allowance
+    function decreaseAllowanceForMany(address spender, uint256[] memory ids, uint256[] memory subtractedValues)
+        public
+        virtual
+        returns (bool)
+    {
+        address owner = msg.sender;
+
+        for (uint256 i; i < ids.length;) {
+            _decreaseAllowance(owner, spender, ids[i], subtractedValues[i]);
+
+            unchecked {
+                ++i;
+            }
+        }
+
+        return true;
     }
 
     /// @notice Internal function for decreasing single id approval amount
@@ -331,13 +398,30 @@ abstract contract ERC1155A is IERC1155A {
 
     /// @dev Implementation copied from solmate/ERC1155
     function _batchBurn(address from, uint256[] memory ids, uint256[] memory amounts) internal virtual {
+        bool singleApproval;
         uint256 idsLength = ids.length; // Saves MLOADs.
+
+        /// @dev case to handle single id / multi id approvals
+        if (msg.sender != from && !isApprovedForAll[from][msg.sender]) {
+            singleApproval = true;
+        }
 
         require(idsLength == amounts.length, "LENGTH_MISMATCH");
 
+        uint256 id;
+        uint256 amount;
+
         for (uint256 i = 0; i < idsLength;) {
-            balanceOf[from][ids[i]] -= amounts[i];
-            _totalSupply[ids[i]] -= amounts[i];
+            id = ids[i];
+            amount = amounts[i];
+
+            if (singleApproval) {
+                require(allowance(from, msg.sender, id) >= amount, "NOT_AUTHORIZED");
+                allowances[from][msg.sender][id] -= amount;
+            }
+
+            balanceOf[from][id] -= amount;
+            _totalSupply[id] -= amount;
 
             // An array can't have a total length
             // larger than the max uint256 value.
@@ -351,7 +435,12 @@ abstract contract ERC1155A is IERC1155A {
 
     /// @dev Implementation copied from solmate/ERC1155
     function _burn(address from, uint256 id, uint256 amount) internal virtual {
+        if (msg.sender != from && !isApprovedForAll[from][msg.sender]) {
+            require(allowance(from, msg.sender, id) >= amount, "NOT_AUTHORIZED");
+        }
+
         balanceOf[from][id] -= amount;
+        allowances[from][msg.sender][id] -= amount;
         _totalSupply[id] -= amount;
 
         emit TransferSingle(msg.sender, from, address(0), id, amount);

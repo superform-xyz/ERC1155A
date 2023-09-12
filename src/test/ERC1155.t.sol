@@ -196,6 +196,9 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
     function testBurn() public {
         token.mint(address(0xBEEF), 1337, 100, "");
 
+        hevm.prank(address(0xBEEF));
+        token.setApprovalForOne(address(this), 1337, 70);
+
         token.burn(address(0xBEEF), 1337, 70);
 
         assertEq(token.balanceOf(address(0xBEEF), 1337), 30);
@@ -224,6 +227,9 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
         burnAmounts[4] = 250;
 
         token.batchMint(address(0xBEEF), ids, mintAmounts, "");
+
+        hevm.prank(address(0xBEEF));
+        token.setApprovalForMany(address(this), ids, burnAmounts);
 
         token.batchBurn(address(0xBEEF), ids, burnAmounts);
 
@@ -934,12 +940,14 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
 
         token.mint(to, id, mintAmount, mintData);
 
+        hevm.prank(to);
+        token.increaseAllowance(address(this), id, burnAmount);
         token.burn(to, id, burnAmount);
 
         assertEq(token.balanceOf(address(to), id), mintAmount - burnAmount);
     }
 
-    function testBatchBurn(
+    function testBatchBurns(
         address to,
         uint256[] memory ids,
         uint256[] memory mintAmounts,
@@ -970,6 +978,9 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
         }
 
         token.batchMint(to, normalizedIds, normalizedMintAmounts, mintData);
+
+        hevm.prank(to);
+        token.increaseAllowanceForMany(address(this), normalizedIds, normalizedBurnAmounts);
 
         token.batchBurn(to, normalizedIds, normalizedBurnAmounts);
 
