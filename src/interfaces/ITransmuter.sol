@@ -1,5 +1,5 @@
 /// SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 interface ITransmuter {
     /// @notice id given here needs to be the same as id on Source!

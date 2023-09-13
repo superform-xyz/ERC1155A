@@ -1,5 +1,5 @@
 /// SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.19;
+pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
 import {MockERC1155A} from "./mocks/MockERC1155A.sol";
