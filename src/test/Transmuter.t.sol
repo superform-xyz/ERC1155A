@@ -2,10 +2,10 @@
 pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
-import {MockTransmuter} from "./mocks/MockTransmuter.sol";
-import {MockERC1155A} from "./mocks/MockERC1155A.sol";
-import {ERC20} from "solmate/tokens/ERC20.sol";
-import {sERC20} from "../transmuter/sERC20.sol";
+import { MockTransmuter } from "./mocks/MockTransmuter.sol";
+import { MockERC1155A } from "./mocks/MockERC1155A.sol";
+import { ERC20 } from "solmate/tokens/ERC20.sol";
+import { sERC20 } from "../transmuter/sERC20.sol";
 
 contract TransmuterTest is Test {
     uint256 public constant THOUSAND_E18 = 1000 ether;

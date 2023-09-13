@@ -9,7 +9,12 @@ interface ITransmuter {
     /// @param name name of the ERC20 to create
     /// @param symbol symbol of the ERC20 to create
     /// @param decimals decimals of the ERC20 to create
-    function registerTransmuter(uint256 id, string memory name, string memory symbol, uint8 decimals)
+    function registerTransmuter(
+        uint256 id,
+        string memory name,
+        string memory symbol,
+        uint8 decimals
+    )
         external
         returns (address);
 

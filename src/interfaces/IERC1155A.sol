@@ -1,7 +1,7 @@
 /// SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.21;
 
-import {IERC1155} from "openzeppelin-contracts/contracts/token/ERC1155/IERC1155.sol";
+import { IERC1155 } from "openzeppelin-contracts/contracts/token/ERC1155/IERC1155.sol";
 
 interface IERC1155A is IERC1155 {
     /*//////////////////////////////////////////////////////////////
@@ -41,13 +41,21 @@ interface IERC1155A is IERC1155 {
 
     /// @notice Public function for increasing multiple id approval amount at once
     /// @dev extension of single id increase allowance
-    function increaseAllowanceForMany(address spender, uint256[] memory ids, uint256[] memory addedValues)
+    function increaseAllowanceForMany(
+        address spender,
+        uint256[] memory ids,
+        uint256[] memory addedValues
+    )
         external
         returns (bool);
 
     /// @notice Public function for decreasing multiple id approval amount at once
     /// @dev extension of single id decrease allowance
-    function decreaseAllowanceForMany(address spender, uint256[] memory ids, uint256[] memory subtractedValues)
+    function decreaseAllowanceForMany(
+        address spender,
+        uint256[] memory ids,
+        uint256[] memory subtractedValues
+    )
         external
         returns (bool);
 
