@@ -1,7 +1,8 @@
 [profile.default]
 libs = ['lib']
-solc = '0.8.19'
+solc_version = "0.8.21"   # Override for the solc version (setting this ignores `auto_detect_solc`)
+evm_version = "paris"     # to prevent usage of PUSH0, which is not supported on all chains
+
 optimizer = true
 optimizer_runs = 200
 test = 'src/test'
-# See more config options https://github.com/foundry-rs/foundry/tree/master/config
