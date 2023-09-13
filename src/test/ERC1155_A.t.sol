@@ -2,7 +2,7 @@
 pragma solidity 0.8.21;
 
 import "forge-std/Test.sol";
-import {MockERC1155A} from "./mocks/MockERC1155A.sol";
+import { MockERC1155A } from "./mocks/MockERC1155A.sol";
 
 contract ERC1155ATest is Test {
     MockERC1155A public SuperShares;
@@ -54,7 +54,8 @@ contract ERC1155ATest is Test {
         SuperShares.setApprovalForAll(bob, true);
         /// @dev Set also approval for one, but smaller than (allowed >= amount) check
         /// @dev We want transfer to execute using mass approval
-        /// @dev If we allow amount bigger than requested for transfer, safeTransferFrom will execute on single allowance
+        /// @dev If we allow amount bigger than requested for transfer, safeTransferFrom will execute on single
+        /// allowance
         SuperShares.setApprovalForOne(bob, 1, allowSingle);
         uint256 bobAllowance = SuperShares.allowance(alice, bob, 1);
         assertEq(bobAllowance, allowSingle);

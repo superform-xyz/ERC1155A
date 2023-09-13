@@ -1,8 +1,8 @@
 /// SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.21;
 
-import {IERC1155A} from "./interfaces/IERC1155A.sol";
-import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
+import { IERC1155A } from "./interfaces/IERC1155A.sol";
+import { Strings } from "openzeppelin-contracts/contracts/utils/Strings.sol";
 
 /**
  * @title ERC1155A
@@ -37,11 +37,19 @@ abstract contract ERC1155A is IERC1155A {
 
     /// @notice Transfer singleApproved id with this function
     /// @dev If caller is owner of ids, transfer just executes.
-    /// @dev If caller singleApproved > transferAmount, function executes and reduces allowance (even if setApproveForAll is true)
-    /// @dev If caller singleApproved < transferAmount && isApprovedForAll, function executes without reducing allowance (full trust assumed)
+    /// @dev If caller singleApproved > transferAmount, function executes and reduces allowance (even if
+    /// setApproveForAll is true)
+    /// @dev If caller singleApproved < transferAmount && isApprovedForAll, function executes without reducing allowance
+    /// (full trust assumed)
     /// @dev If caller only approvedForAll, function executes without reducing allowance (full trust assumed)
     /// @dev SingleApprove is senior in execution flow, but isApprovedForAll is senior in allowance management
-    function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes calldata data)
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 id,
+        uint256 amount,
+        bytes calldata data
+    )
         public
         virtual
         override
@@ -49,7 +57,8 @@ abstract contract ERC1155A is IERC1155A {
         address operator = msg.sender;
         uint256 allowed = allowances[from][operator][id];
 
-        /// NOTE: This function order makes it more costly to use isApprovedForAll but cheaper to user single approval and owner transfer
+        /// NOTE: This function order makes it more costly to use isApprovedForAll but cheaper to user single approval
+        /// and owner transfer
 
         /// @dev operator is an owner of ids
         if (operator == from) {
@@ -80,7 +89,8 @@ abstract contract ERC1155A is IERC1155A {
     }
 
     /// @notice Internal safeTranferFrom function called after all checks from the public function are done
-    /// @dev Notice `operator` param. It's msg.sender to the safeTransferFrom function. Function is specific to SuperForm singleId approve logic.
+    /// @dev Notice `operator` param. It's msg.sender to the safeTransferFrom function. Function is specific to
+    /// SuperForm singleId approve logic.
     function _safeTransferFrom(
         address operator,
         address from,
@@ -88,7 +98,10 @@ abstract contract ERC1155A is IERC1155A {
         uint256 id,
         uint256 amount,
         bytes calldata data
-    ) internal virtual {
+    )
+        internal
+        virtual
+    {
         balanceOf[from][id] -= amount;
         balanceOf[to][id] += amount;
 
@@ -122,7 +135,11 @@ abstract contract ERC1155A is IERC1155A {
         uint256[] calldata ids,
         uint256[] calldata amounts,
         bytes calldata data
-    ) public virtual override {
+    )
+        public
+        virtual
+        override
+    {
         bool singleApproval;
         uint256 len = ids.length;
 
@@ -168,7 +185,10 @@ abstract contract ERC1155A is IERC1155A {
     }
 
     /// @dev Implementation copied from solmate/ERC1155
-    function balanceOfBatch(address[] calldata owners, uint256[] calldata ids)
+    function balanceOfBatch(
+        address[] calldata owners,
+        uint256[] calldata ids
+    )
         public
         view
         virtual
@@ -241,7 +261,11 @@ abstract contract ERC1155A is IERC1155A {
 
     /// @notice Public function for increasing multiple id approval amount at once
     /// @dev extension of single id increase allowance
-    function increaseAllowanceForMany(address spender, uint256[] memory ids, uint256[] memory addedValues)
+    function increaseAllowanceForMany(
+        address spender,
+        uint256[] memory ids,
+        uint256[] memory addedValues
+    )
         public
         virtual
         returns (bool)
@@ -261,7 +285,11 @@ abstract contract ERC1155A is IERC1155A {
 
     /// @notice Public function for decreasing multiple id approval amount at once
     /// @dev extension of single id decrease allowance
-    function decreaseAllowanceForMany(address spender, uint256[] memory ids, uint256[] memory subtractedValues)
+    function decreaseAllowanceForMany(
+        address spender,
+        uint256[] memory ids,
+        uint256[] memory subtractedValues
+    )
         public
         virtual
         returns (bool)
@@ -283,7 +311,12 @@ abstract contract ERC1155A is IERC1155A {
     /// @dev Only to be used by address(this)
     /// @dev Notice `owner` param, only contract functions should be able to define it
     /// @dev Re-adapted from ERC20
-    function _decreaseAllowance(address owner, address spender, uint256 id, uint256 subtractedValue)
+    function _decreaseAllowance(
+        address owner,
+        address spender,
+        uint256 id,
+        uint256 subtractedValue
+    )
         internal
         virtual
         returns (bool)
@@ -366,7 +399,12 @@ abstract contract ERC1155A is IERC1155A {
     }
 
     /// @dev Implementation copied from solmate/ERC1155
-    function _batchMint(address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data)
+    function _batchMint(
+        address to,
+        uint256[] memory ids,
+        uint256[] memory amounts,
+        bytes memory data
+    )
         internal
         virtual
     {
@@ -454,7 +492,13 @@ abstract contract ERC1155TokenReceiver {
         return ERC1155TokenReceiver.onERC1155Received.selector;
     }
 
-    function onERC1155BatchReceived(address, address, uint256[] calldata, uint256[] calldata, bytes calldata)
+    function onERC1155BatchReceived(
+        address,
+        address,
+        uint256[] calldata,
+        uint256[] calldata,
+        bytes calldata
+    )
         external
         virtual
         returns (bytes4)

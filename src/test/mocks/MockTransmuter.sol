@@ -1,9 +1,9 @@
 /// SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.21;
 
-import {IERC1155A} from "../../interfaces/IERC1155A.sol";
-import {Transmuter} from "../../transmuter/Transmuter.sol";
-import {sERC20} from "../../transmuter/sERC20.sol";
+import { IERC1155A } from "../../interfaces/IERC1155A.sol";
+import { Transmuter } from "../../transmuter/Transmuter.sol";
+import { sERC20 } from "../../transmuter/sERC20.sol";
 
 /// @notice For test purpouses we open mint()/burn() functions of ERC1155s
 contract MockTransmuter is Transmuter {
@@ -15,7 +15,12 @@ contract MockTransmuter is Transmuter {
         deployer = deployer_;
     }
 
-    function registerTransmuter(uint256 id, string memory name, string memory symbol, uint8 decimals)
+    function registerTransmuter(
+        uint256 id,
+        string memory name,
+        string memory symbol,
+        uint8 decimals
+    )
         external
         override
         returns (address)

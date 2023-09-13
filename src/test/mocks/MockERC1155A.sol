@@ -1,8 +1,8 @@
 /// SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.21;
 
-import {ERC1155A} from "../../ERC1155A.sol";
-import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
+import { ERC1155A } from "../../ERC1155A.sol";
+import { Strings } from "openzeppelin-contracts/contracts/utils/Strings.sol";
 
 /// @notice For test purpouses we open mint()/burn() functions of ERC1155A
 contract MockERC1155A is ERC1155A {
