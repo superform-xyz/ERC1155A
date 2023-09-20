@@ -1,9 +1,9 @@
 /// SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.21;
+pragma solidity ^0.8.19;
 
-import { IERC1155A } from "../interfaces/IERC1155A.sol";
-import { sERC20 } from "./sERC20.sol";
-import { ITransmuter } from "../interfaces/ITransmuter.sol";
+import {IERC1155A} from "../interfaces/IERC1155A.sol";
+import {sERC20} from "./sERC20.sol";
+import {ITransmuter} from "../interfaces/ITransmuter.sol";
 
 /// @title Transmuter
 /// @author Zeropoint Labs.
@@ -24,12 +24,7 @@ abstract contract Transmuter is ITransmuter {
     }
 
     /// @inheritdoc ITransmuter
-    function registerTransmuter(
-        uint256 id,
-        string memory name,
-        string memory symbol,
-        uint8 decimals
-    )
+    function registerTransmuter(uint256 id, string memory name, string memory symbol, uint8 decimals)
         external
         virtual
         override
@@ -106,11 +101,7 @@ abstract contract Transmuter is ITransmuter {
         uint256, /*id*/
         uint256, /*value*/
         bytes calldata /*data*/
-    )
-        external
-        pure
-        returns (bytes4)
-    {
+    ) external pure returns (bytes4) {
         return this.onERC1155Received.selector;
     }
 
@@ -120,11 +111,7 @@ abstract contract Transmuter is ITransmuter {
         uint256[] calldata, /*ids*/
         uint256[] calldata, /*values*/
         bytes calldata /*data*/
-    )
-        external
-        pure
-        returns (bytes4)
-    {
+    ) external pure returns (bytes4) {
         return this.onERC1155BatchReceived.selector;
     }
 }
