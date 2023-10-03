@@ -1,8 +1,8 @@
 /// SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.19;
 
-import {IERC1155A} from "./interfaces/IERC1155A.sol";
-import {Strings} from "openzeppelin-contracts/contracts/utils/Strings.sol";
+import { IERC1155A } from "./interfaces/IERC1155A.sol";
+import { Strings } from "openzeppelin-contracts/contracts/utils/Strings.sol";
 
 /**
  * @title ERC1155A
@@ -43,7 +43,13 @@ abstract contract ERC1155A is IERC1155A {
     /// (full trust assumed)
     /// @dev If caller only approvedForAll, function executes without reducing allowance (full trust assumed)
     /// @dev SingleApprove is senior in execution flow, but isApprovedForAll is senior in allowance management
-    function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes calldata data)
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 id,
+        uint256 amount,
+        bytes calldata data
+    )
         public
         virtual
         override
@@ -92,7 +98,10 @@ abstract contract ERC1155A is IERC1155A {
         uint256 id,
         uint256 amount,
         bytes calldata data
-    ) internal virtual {
+    )
+        internal
+        virtual
+    {
         balanceOf[from][id] -= amount;
         balanceOf[to][id] += amount;
 
@@ -126,7 +135,11 @@ abstract contract ERC1155A is IERC1155A {
         uint256[] calldata ids,
         uint256[] calldata amounts,
         bytes calldata data
-    ) public virtual override {
+    )
+        public
+        virtual
+        override
+    {
         bool singleApproval;
         uint256 len = ids.length;
 
@@ -172,7 +185,10 @@ abstract contract ERC1155A is IERC1155A {
     }
 
     /// @dev Implementation copied from solmate/ERC1155
-    function balanceOfBatch(address[] calldata owners, uint256[] calldata ids)
+    function balanceOfBatch(
+        address[] calldata owners,
+        uint256[] calldata ids
+    )
         public
         view
         virtual
@@ -245,7 +261,11 @@ abstract contract ERC1155A is IERC1155A {
 
     /// @notice Public function for increasing multiple id approval amount at once
     /// @dev extension of single id increase allowance
-    function increaseAllowanceForMany(address spender, uint256[] memory ids, uint256[] memory addedValues)
+    function increaseAllowanceForMany(
+        address spender,
+        uint256[] memory ids,
+        uint256[] memory addedValues
+    )
         public
         virtual
         returns (bool)
@@ -265,7 +285,11 @@ abstract contract ERC1155A is IERC1155A {
 
     /// @notice Public function for decreasing multiple id approval amount at once
     /// @dev extension of single id decrease allowance
-    function decreaseAllowanceForMany(address spender, uint256[] memory ids, uint256[] memory subtractedValues)
+    function decreaseAllowanceForMany(
+        address spender,
+        uint256[] memory ids,
+        uint256[] memory subtractedValues
+    )
         public
         virtual
         returns (bool)
@@ -287,7 +311,12 @@ abstract contract ERC1155A is IERC1155A {
     /// @dev Only to be used by address(this)
     /// @dev Notice `owner` param, only contract functions should be able to define it
     /// @dev Re-adapted from ERC20
-    function _decreaseAllowance(address owner, address spender, uint256 id, uint256 subtractedValue)
+    function _decreaseAllowance(
+        address owner,
+        address spender,
+        uint256 id,
+        uint256 subtractedValue
+    )
         internal
         virtual
         returns (bool)
@@ -370,7 +399,12 @@ abstract contract ERC1155A is IERC1155A {
     }
 
     /// @dev Implementation copied from solmate/ERC1155
-    function _batchMint(address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data)
+    function _batchMint(
+        address to,
+        uint256[] memory ids,
+        uint256[] memory amounts,
+        bytes memory data
+    )
         internal
         virtual
     {
@@ -439,12 +473,15 @@ abstract contract ERC1155A is IERC1155A {
 
     /// @dev Implementation copied from solmate/ERC1155
     function _burn(address from, uint256 id, uint256 amount) internal virtual {
+        // Check if the msg.sender is the owner or is approved for all tokens
         if (msg.sender != from && !isApprovedForAll[from][msg.sender]) {
+            // If not, then check if the msg.sender has sufficient allowance
             require(allowance(from, msg.sender, id) >= amount, "NOT_AUTHORIZED");
+            allowances[from][msg.sender][id] -= amount; // Deduct the burned amount from the allowance
         }
 
+        // Update the balances and total supply
         balanceOf[from][id] -= amount;
-        allowances[from][msg.sender][id] -= amount;
         _totalSupply[id] -= amount;
 
         emit TransferSingle(msg.sender, from, address(0), id, amount);
@@ -458,7 +495,13 @@ abstract contract ERC1155TokenReceiver {
         return ERC1155TokenReceiver.onERC1155Received.selector;
     }
 
-    function onERC1155BatchReceived(address, address, uint256[] calldata, uint256[] calldata, bytes calldata)
+    function onERC1155BatchReceived(
+        address,
+        address,
+        uint256[] calldata,
+        uint256[] calldata,
+        bytes calldata
+    )
         external
         virtual
         returns (bytes4)
