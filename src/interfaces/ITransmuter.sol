@@ -1,5 +1,5 @@
 /// SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
 interface ITransmuter {
     /// @notice id given here needs to be the same as id on Source!
@@ -9,7 +9,12 @@ interface ITransmuter {
     /// @param name name of the ERC20 to create
     /// @param symbol symbol of the ERC20 to create
     /// @param decimals decimals of the ERC20 to create
-    function registerTransmuter(uint256 id, string memory name, string memory symbol, uint8 decimals)
+    function registerTransmuter(
+        uint256 id,
+        string memory name,
+        string memory symbol,
+        uint8 decimals
+    )
         external
         returns (address);
 

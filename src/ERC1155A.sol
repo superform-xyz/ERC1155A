@@ -1,5 +1,5 @@
 /// SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
 import { IERC1155A } from "./interfaces/IERC1155A.sol";
 import { Strings } from "openzeppelin-contracts/contracts/utils/Strings.sol";
