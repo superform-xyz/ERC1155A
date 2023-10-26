@@ -3,6 +3,7 @@ pragma solidity ^0.8.21;
 
 import { IERC1155A } from "./interfaces/IERC1155A.sol";
 import { Strings } from "openzeppelin-contracts/contracts/utils/Strings.sol";
+import { sERC20 } from "./sERC20.sol";
 
 /**
  * @title ERC1155A
@@ -14,10 +15,9 @@ import { Strings } from "openzeppelin-contracts/contracts/utils/Strings.sol";
  * 3. Metadata build out of baseURI and id uint value into offchain metadata address
  *
  */
-
 abstract contract ERC1155A is IERC1155A {
     /*//////////////////////////////////////////////////////////////
-                             ERC1155s STORAGE
+                             ERC1155a STORAGE
     //////////////////////////////////////////////////////////////*/
     /// @notice ERC20-like mapping for single id supply.
     mapping(uint256 => uint256) public _totalSupply;
@@ -31,8 +31,11 @@ abstract contract ERC1155A is IERC1155A {
     /// @dev Implementation copied from solmate/ERC1155
     mapping(address => mapping(address => bool)) public isApprovedForAll;
 
+    /// @dev mapping of token ids to synthetic token addresses
+    mapping(uint256 id => address syntheticToken) public synthethicTokenId;
+
     ///////////////////////////////////////////////////////////////////////////
-    ///                     ERC1155-S LOGIC SECTION                         ///
+    ///                     ERC1155-A LOGIC SECTION                         ///
     ///////////////////////////////////////////////////////////////////////////
 
     /// @notice Transfer singleApproved id with this function
@@ -86,33 +89,6 @@ abstract contract ERC1155A is IERC1155A {
         } else {
             revert("NOT_AUTHORIZED");
         }
-    }
-
-    /// @notice Internal safeTranferFrom function called after all checks from the public function are done
-    /// @dev Notice `operator` param. It's msg.sender to the safeTransferFrom function. Function is specific to
-    /// SuperForm singleId approve logic.
-    function _safeTransferFrom(
-        address operator,
-        address from,
-        address to,
-        uint256 id,
-        uint256 amount,
-        bytes calldata data
-    )
-        internal
-        virtual
-    {
-        balanceOf[from][id] -= amount;
-        balanceOf[to][id] += amount;
-
-        emit TransferSingle(operator, from, to, id, amount);
-        require(
-            to.code.length == 0
-                ? to != address(0)
-                : ERC1155TokenReceiver(to).onERC1155Received(operator, from, id, amount, data)
-                    == ERC1155TokenReceiver.onERC1155Received.selector,
-            "UNSAFE_RECIPIENT"
-        );
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -211,21 +187,18 @@ abstract contract ERC1155A is IERC1155A {
     ///                     SIGNLE APPROVE SECTION                          ///
     ///////////////////////////////////////////////////////////////////////////
 
-    /// @notice Public function for setting single id approval
-    /// @dev Notice `owner` param, it will always be msg.sender, see _setApprovalForOne()
+    /// inheritdoc IERC1155A
     function setApprovalForOne(address spender, uint256 id, uint256 amount) public virtual {
         address owner = msg.sender;
         _setApprovalForOne(owner, spender, id, amount);
     }
 
-    /// @notice Public getter for existing single id approval
-    /// @dev Re-adapted from ERC20
+    /// inheritdoc IERC1155A
     function allowance(address owner, address spender, uint256 id) public view virtual returns (uint256) {
         return allowances[owner][spender][id];
     }
 
-    /// @notice Public function for increasing single id approval amount
-    /// @dev Re-adapted from ERC20
+    /// inheritdoc IERC1155A
     function increaseAllowance(address spender, uint256 id, uint256 addedValue) public virtual returns (bool) {
         address owner = msg.sender;
         unchecked {
@@ -234,8 +207,7 @@ abstract contract ERC1155A is IERC1155A {
         return true;
     }
 
-    /// @notice Public function for decreasing single id approval amount
-    /// @dev Re-adapted from ERC20
+    /// inheritdoc IERC1155A
     function decreaseAllowance(address spender, uint256 id, uint256 subtractedValue) public virtual returns (bool) {
         address owner = msg.sender;
         return _decreaseAllowance(owner, spender, id, subtractedValue);
@@ -245,8 +217,7 @@ abstract contract ERC1155A is IERC1155A {
     ///                     MULTI APPROVE SECTION                           ///
     ///////////////////////////////////////////////////////////////////////////
 
-    /// @notice Public function for setting multiple id approval
-    /// @dev extension of sigle id approval
+    /// inheritdoc IERC1155A
     function setApprovalForMany(address spender, uint256[] memory ids, uint256[] memory amounts) public virtual {
         address owner = msg.sender;
 
@@ -259,8 +230,7 @@ abstract contract ERC1155A is IERC1155A {
         }
     }
 
-    /// @notice Public function for increasing multiple id approval amount at once
-    /// @dev extension of single id increase allowance
+    /// inheritdoc IERC1155A
     function increaseAllowanceForMany(
         address spender,
         uint256[] memory ids,
@@ -271,9 +241,9 @@ abstract contract ERC1155A is IERC1155A {
         returns (bool)
     {
         address owner = msg.sender;
-
+        uint256 id;
         for (uint256 i; i < ids.length;) {
-            uint256 id = ids[i];
+            id = ids[i];
             unchecked {
                 _setApprovalForOne(owner, spender, id, allowance(owner, spender, id) + addedValues[i]);
                 ++i;
@@ -283,8 +253,7 @@ abstract contract ERC1155A is IERC1155A {
         return true;
     }
 
-    /// @notice Public function for decreasing multiple id approval amount at once
-    /// @dev extension of single id decrease allowance
+    /// inheritdoc IERC1155A
     function decreaseAllowanceForMany(
         address spender,
         uint256[] memory ids,
@@ -305,6 +274,158 @@ abstract contract ERC1155A is IERC1155A {
         }
 
         return true;
+    }
+
+    /*///////////////////////////////////////////////////////////////
+                    SERC20 AND TRANSMUTE LOGIC 
+    //////////////////////////////////////////////////////////////*/
+
+    /// @inheritdoc IERC1155A
+    function registerSERC20(
+        uint256 id,
+        string memory name,
+        string memory symbol
+    )
+        external
+        virtual
+        override
+        returns (address)
+    {
+        if (synthethicTokenId[id] != address(0)) revert SYNTHETIC_ERC20_ALREADY_REGISTERED();
+
+        address syntheticToken = address(new sERC20(name, symbol));
+        synthethicTokenId[id] = syntheticToken;
+
+        return synthethicTokenId[id];
+    }
+
+    /// @inheritdoc IERC1155A
+    function transmuteBatchToERC20(
+        address onBehalfOf,
+        uint256[] memory ids,
+        uint256[] memory amounts
+    )
+        external
+        override
+    {
+        /// @dev an approval is needed to burn
+        _batchBurn(onBehalfOf, ids, amounts);
+
+        for (uint256 i = 0; i < ids.length;) {
+            sERC20(synthethicTokenId[ids[i]]).mint(onBehalfOf, amounts[i]);
+            unchecked {
+                ++i;
+            }
+        }
+
+        emit TransmutedBatchToERC20(onBehalfOf, ids, amounts);
+    }
+
+    /// @inheritdoc IERC1155A
+    function transmuteBatchToERC1155A(
+        address onBehalfOf,
+        uint256[] memory ids,
+        uint256[] memory amounts
+    )
+        external
+        override
+    {
+        for (uint256 i = 0; i < ids.length;) {
+            /// @dev an approval is needed on each sERC20 to burn
+            sERC20(synthethicTokenId[ids[i]]).burn(onBehalfOf, msg.sender, amounts[i]);
+            unchecked {
+                ++i;
+            }
+        }
+
+        _batchMint(onBehalfOf, ids, amounts, bytes(""));
+
+        emit TransmutedBatchToERC1155A(onBehalfOf, ids, amounts);
+    }
+
+    /// @inheritdoc IERC1155A
+    function transmuteToERC20(address onBehalfOf, uint256 id, uint256 amount) external override {
+        /// @dev an approval is needed to burn
+        _burn(onBehalfOf, id, amount);
+
+        sERC20(synthethicTokenId[id]).mint(onBehalfOf, amount);
+        emit TransmutedToERC20(onBehalfOf, id, amount);
+    }
+
+    /// @inheritdoc IERC1155A
+    function transmuteToERC1155A(address onBehalfOf, uint256 id, uint256 amount) external override {
+        /// @dev an approval is needed to burn
+        sERC20(synthethicTokenId[id]).burn(onBehalfOf, msg.sender, amount);
+
+        _mint(onBehalfOf, id, amount, bytes(""));
+
+        emit TransmutedToERC1155A(onBehalfOf, id, amount);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    ///                        METADATA SECTION                             ///
+    ///////////////////////////////////////////////////////////////////////////
+
+    /// @notice See {IERC721Metadata-tokenURI}.
+    /// @dev Compute return string from baseURI set for this contract and unique id
+    function uri(uint256 id) public view virtual returns (string memory) {
+        return string(abi.encodePacked(_baseURI(), Strings.toString(id)));
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    ///                        SUPPLY GETTERS                               ///
+    ///////////////////////////////////////////////////////////////////////////
+
+    /// @notice See {IERC1155A-totalSupply}
+    function totalSupply(uint256 id) external view virtual returns (uint256) {
+        return _totalSupply[id];
+    }
+
+    /// @notice See {IERC1155A-exists}
+    function exists(uint256 id) external view virtual returns (bool) {
+        return _totalSupply[id] > 0;
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                              ERC165 LOGIC
+    //////////////////////////////////////////////////////////////*/
+
+    /// @dev Implementation copied from solmate/ERC1155
+    function supportsInterface(bytes4 interfaceId) public view virtual returns (bool) {
+        return interfaceId == 0x01ffc9a7 // ERC165 Interface ID for ERC165
+            || interfaceId == 0xd9b67a26 // ERC165 Interface ID for ERC1155
+            || interfaceId == 0x0e89341c; // ERC165 Interface ID for ERC1155MetadataURI
+    }
+
+    /*///////////////////////////////////////////////////////////////
+                            INTERNAL OPERATIONS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Internal safeTranferFrom function called after all checks from the public function are done
+    /// @dev Notice `operator` param. It's msg.sender to the safeTransferFrom function. Function is specific to
+    /// SuperForm singleId approve logic.
+    function _safeTransferFrom(
+        address operator,
+        address from,
+        address to,
+        uint256 id,
+        uint256 amount,
+        bytes calldata data
+    )
+        internal
+        virtual
+    {
+        balanceOf[from][id] -= amount;
+        balanceOf[to][id] += amount;
+
+        emit TransferSingle(operator, from, to, id, amount);
+        require(
+            to.code.length == 0
+                ? to != address(0)
+                : ERC1155TokenReceiver(to).onERC1155Received(operator, from, id, amount, data)
+                    == ERC1155TokenReceiver.onERC1155Received.selector,
+            "UNSAFE_RECIPIENT"
+        );
     }
 
     /// @notice Internal function for decreasing single id approval amount
@@ -340,43 +461,8 @@ abstract contract ERC1155A is IERC1155A {
         emit ApprovalForOne(owner, spender, id, amount);
     }
 
-    ///////////////////////////////////////////////////////////////////////////
-    ///                        METADATA SECTION                             ///
-    ///////////////////////////////////////////////////////////////////////////
-
-    /// @notice See {IERC721Metadata-tokenURI}.
-    /// @dev Compute return string from baseURI set for this contract and unique id
-    function uri(uint256 id) public view virtual returns (string memory) {
-        return string(abi.encodePacked(_baseURI(), Strings.toString(id)));
-    }
-
     /// @dev Used to construct return url
     function _baseURI() internal view virtual returns (string memory);
-
-    ///////////////////////////////////////////////////////////////////////////
-    ///                        SUPPLY GETTERS                               ///
-    ///////////////////////////////////////////////////////////////////////////
-
-    /// @notice See {IERC1155A-totalSupply}
-    function totalSupply(uint256 id) external view virtual returns (uint256) {
-        return _totalSupply[id];
-    }
-
-    /// @notice See {IERC1155A-exists}
-    function exists(uint256 id) external view virtual returns (bool) {
-        return _totalSupply[id] > 0;
-    }
-
-    /*//////////////////////////////////////////////////////////////
-                              ERC165 LOGIC
-    //////////////////////////////////////////////////////////////*/
-
-    /// @dev Implementation copied from solmate/ERC1155
-    function supportsInterface(bytes4 interfaceId) public view virtual returns (bool) {
-        return interfaceId == 0x01ffc9a7 // ERC165 Interface ID for ERC165
-            || interfaceId == 0xd9b67a26 // ERC165 Interface ID for ERC1155
-            || interfaceId == 0x0e89341c; // ERC165 Interface ID for ERC1155MetadataURI
-    }
 
     /*//////////////////////////////////////////////////////////////
                         INTERNAL MINT/BURN LOGIC

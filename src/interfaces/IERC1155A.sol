@@ -10,6 +10,17 @@ interface IERC1155A is IERC1155 {
 
     /// @notice Event emitted when single id approval is set
     event ApprovalForOne(address indexed owner, address indexed spender, uint256 id, uint256 amount);
+    event TransmutedBatchToERC20(address user, uint256[] ids, uint256[] amounts);
+    event TransmutedBatchToERC1155A(address user, uint256[] ids, uint256[] amounts);
+    event TransmutedToERC20(address user, uint256 id, uint256 amount);
+    event TransmutedToERC1155A(address user, uint256 id, uint256 amount);
+
+    /*//////////////////////////////////////////////////////////////
+                                 ERRORS
+    //////////////////////////////////////////////////////////////*/
+
+    /// @dev Thrown when SERC20 was already registered
+    error SYNTHETIC_ERC20_ALREADY_REGISTERED();
 
     /*//////////////////////////////////////////////////////////////
                               SINGLE APPROVE
@@ -58,6 +69,41 @@ interface IERC1155A is IERC1155 {
     )
         external
         returns (bool);
+
+    /*//////////////////////////////////////////////////////////////
+                    SERC20 AND TRANSMUTE LOGIC 
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice id given here needs to be the same as id on Source!
+    /// @dev Make sure its set for existing ids only
+    /// @dev Function set to virtual so that implementing protocols may introduce RBAC here or perform other changes
+    /// @param id id of the ERC1155 to wrap
+    /// @param name name of the ERC20 to create
+    /// @param symbol symbol of the ERC20 to create
+    function registerSERC20(uint256 id, string memory name, string memory symbol) external returns (address);
+
+    /// @notice Use transmuteBatchToERC20 to transmute multiple ERC1155 ids into separate ERC20
+    /// Easier to transmute to 1155A than to transmute back to erc20 because of ERC1155 beauty!
+    /// @param onBehalfOf address of the user on whose behalf this transmutation is happening
+    /// @param ids ids of the ERC1155A to transmute
+    /// @param amounts amounts of the ERC1155A to transmute
+    function transmuteBatchToERC20(address onBehalfOf, uint256[] memory ids, uint256[] memory amounts) external;
+
+    /// @notice Use transmuteBatchToERC1155A to transmute multiple ERC20 ids into separate ERC1155
+    /// @param onBehalfOf address of the user on whose behalf this transmutation is happening
+    /// @param ids ids of the ERC20 to transmute
+    /// @param amounts amounts of the ERC20 to transmute
+    function transmuteBatchToERC1155A(address onBehalfOf, uint256[] memory ids, uint256[] memory amounts) external;
+
+    /// @param onBehalfOf address of the user on whose behalf this transmutation is happening
+    /// @param id id of the ERC20s to transmute to erc20
+    /// @param amount amount of the ERC20s to transmute to erc20
+    function transmuteToERC20(address onBehalfOf, uint256 id, uint256 amount) external;
+
+    /// @param onBehalfOf address of the user on whose behalf this transmutation is happening
+    /// @param id id of the ERC20s to transmute to erc1155
+    /// @param amount amount of the ERC20s to transmute to erc1155
+    function transmuteToERC1155A(address onBehalfOf, uint256 id, uint256 amount) external;
 
     /*//////////////////////////////////////////////////////////////
                                 METADATA 
