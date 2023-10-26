@@ -196,11 +196,10 @@ contract ERC1155ATest is Test {
         vm.startPrank(deployer);
         uint256 id = 3;
         SuperShares.mint(alice, id, THOUSAND_E18, "");
-        sERC20 syntheticERC20Token = sERC20(SuperShares.registerSERC20(id, "SuperPosition Id 3", "SS1"));
+        sERC20 syntheticERC20Token = sERC20(SuperShares.registerSERC20(id));
         vm.stopPrank();
         vm.startPrank(alice);
 
-        SuperShares.setApprovalForAll(address(SuperShares), true);
         SuperShares.transmuteToERC20(alice, id, THOUSAND_E18);
         assertEq(SuperShares.balanceOf(alice, id), 0);
 
@@ -218,11 +217,36 @@ contract ERC1155ATest is Test {
         vm.stopPrank();
     }
 
+    function testTransmuteNotRegistered() public {
+        vm.startPrank(deployer);
+        uint256 id = 3;
+        SuperShares.mint(alice, id, THOUSAND_E18, "");
+
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = 3;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = THOUSAND_E18;
+        vm.stopPrank();
+        vm.startPrank(alice);
+
+        vm.expectRevert(IERC1155A.SYNTHETIC_ERC20_NOT_REGISTERED.selector);
+        SuperShares.transmuteToERC20(alice, id, THOUSAND_E18);
+
+        vm.expectRevert(IERC1155A.SYNTHETIC_ERC20_NOT_REGISTERED.selector);
+        SuperShares.transmuteToERC1155A(alice, id, THOUSAND_E18);
+
+        vm.expectRevert(IERC1155A.SYNTHETIC_ERC20_NOT_REGISTERED.selector);
+        SuperShares.transmuteBatchToERC20(alice, ids, amounts);
+
+        vm.expectRevert(IERC1155A.SYNTHETIC_ERC20_NOT_REGISTERED.selector);
+        SuperShares.transmuteBatchToERC1155A(alice, ids, amounts);
+    }
+
     function testTransmuteSingleApprove() public {
         vm.startPrank(deployer);
         uint256 id = 3;
         SuperShares.mint(alice, id, THOUSAND_E18, "");
-        sERC20 syntheticERC20Token = sERC20(SuperShares.registerSERC20(id, "SuperPosition Id 3", "SS1"));
+        sERC20 syntheticERC20Token = sERC20(SuperShares.registerSERC20(id));
         vm.stopPrank();
         vm.prank(alice);
 
@@ -255,7 +279,7 @@ contract ERC1155ATest is Test {
         vm.startPrank(deployer);
         uint256 id = 3;
         SuperShares.mint(alice, id, THOUSAND_E18, "");
-        sERC20 syntheticERC20Token = sERC20(SuperShares.registerSERC20(id, "SuperPosition Id 3", "SS1"));
+        sERC20 syntheticERC20Token = sERC20(SuperShares.registerSERC20(id));
         vm.stopPrank();
         vm.prank(alice);
 
@@ -288,8 +312,8 @@ contract ERC1155ATest is Test {
         SuperShares.mint(alice, ids[0], THOUSAND_E18, "");
         SuperShares.mint(alice, ids[1], THOUSAND_E18, "");
 
-        sERC20 syntheticERC20Token1 = sERC20(SuperShares.registerSERC20(ids[0], "SuperPosition Id 3", "SS1"));
-        sERC20 syntheticERC20Token2 = sERC20(SuperShares.registerSERC20(ids[1], "SuperPosition Id 4", "SS2"));
+        sERC20 syntheticERC20Token1 = sERC20(SuperShares.registerSERC20(ids[0]));
+        sERC20 syntheticERC20Token2 = sERC20(SuperShares.registerSERC20(ids[1]));
 
         vm.stopPrank();
         vm.startPrank(alice);
@@ -298,7 +322,6 @@ contract ERC1155ATest is Test {
         amounts[0] = THOUSAND_E18;
         amounts[1] = THOUSAND_E18;
 
-        SuperShares.setApprovalForAll(address(SuperShares), true);
         SuperShares.transmuteBatchToERC20(alice, ids, amounts);
 
         assertEq(SuperShares.balanceOf(alice, ids[0]), 0);
@@ -327,8 +350,8 @@ contract ERC1155ATest is Test {
         SuperShares.mint(alice, ids[0], THOUSAND_E18, "");
         SuperShares.mint(alice, ids[1], THOUSAND_E18, "");
 
-        sERC20 syntheticERC20Token1 = sERC20(SuperShares.registerSERC20(ids[0], "SuperPosition Id 3", "SS1"));
-        sERC20 syntheticERC20Token2 = sERC20(SuperShares.registerSERC20(ids[1], "SuperPosition Id 4", "SS2"));
+        sERC20 syntheticERC20Token1 = sERC20(SuperShares.registerSERC20(ids[0]));
+        sERC20 syntheticERC20Token2 = sERC20(SuperShares.registerSERC20(ids[1]));
 
         vm.stopPrank();
 
@@ -376,8 +399,8 @@ contract ERC1155ATest is Test {
         SuperShares.mint(alice, ids[0], THOUSAND_E18, "");
         SuperShares.mint(alice, ids[1], THOUSAND_E18, "");
 
-        sERC20 syntheticERC20Token1 = sERC20(SuperShares.registerSERC20(ids[0], "SuperPosition Id 3", "SS1"));
-        sERC20 syntheticERC20Token2 = sERC20(SuperShares.registerSERC20(ids[1], "SuperPosition Id 4", "SS2"));
+        sERC20 syntheticERC20Token1 = sERC20(SuperShares.registerSERC20(ids[0]));
+        sERC20 syntheticERC20Token2 = sERC20(SuperShares.registerSERC20(ids[1]));
 
         vm.stopPrank();
 
@@ -410,10 +433,10 @@ contract ERC1155ATest is Test {
 
     function testTransmuterAlreadyRegistered() public {
         vm.prank(deployer);
-        sERC20 syntheticERC20Token = sERC20(SuperShares.registerSERC20(1, "SuperPosition Id 1", "SS1"));
+        sERC20 syntheticERC20Token = sERC20(SuperShares.registerSERC20(1));
 
         vm.prank(deployer);
         vm.expectRevert(IERC1155A.SYNTHETIC_ERC20_ALREADY_REGISTERED.selector);
-        syntheticERC20Token = sERC20(SuperShares.registerSERC20(1, "SuperPosition Id 1", "SS1"));
+        syntheticERC20Token = sERC20(SuperShares.registerSERC20(1));
     }
 }
