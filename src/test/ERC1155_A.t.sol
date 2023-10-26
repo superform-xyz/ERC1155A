@@ -3,10 +3,17 @@ pragma solidity ^0.8.21;
 
 import "forge-std/Test.sol";
 import { MockERC1155A } from "./mocks/MockERC1155A.sol";
+import { sERC20 } from "../sERC20.sol";
+
+import { IERC1155A } from "../interfaces/IERC1155A.sol";
+
+import { IERC20Errors } from "openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
 
 contract ERC1155ATest is Test {
     MockERC1155A public SuperShares;
     uint256 public constant THOUSAND_E18 = 1000 ether;
+
+    address public deployer = address(0x777);
     address public alice = address(0x2137);
     address public bob = address(0x0997);
 
@@ -183,5 +190,253 @@ contract ERC1155ATest is Test {
         string memory url = "https://api.superform.xyz/superposition/1";
         string memory returned = SuperShares.uri(1);
         assertEq(url, returned);
+    }
+
+    function testTransmute() public {
+        vm.startPrank(deployer);
+        uint256 id = 3;
+        SuperShares.mint(alice, id, THOUSAND_E18, "");
+        sERC20 syntheticERC20Token = sERC20(SuperShares.registerSERC20(id));
+        vm.stopPrank();
+        vm.startPrank(alice);
+
+        SuperShares.transmuteToERC20(alice, id, THOUSAND_E18);
+        assertEq(SuperShares.balanceOf(alice, id), 0);
+
+        uint256 sERC20Balance = syntheticERC20Token.balanceOf(alice);
+        assertEq(sERC20Balance, THOUSAND_E18);
+
+        syntheticERC20Token.approve(address(SuperShares), sERC20Balance);
+
+        /// NOTE: Test if 1:1 between 1155 and 20 always holds
+        SuperShares.transmuteToERC1155A(alice, id, sERC20Balance);
+
+        assertEq(SuperShares.balanceOf(alice, id), THOUSAND_E18);
+
+        assertEq(syntheticERC20Token.balanceOf(address(alice)), 0);
+        vm.stopPrank();
+    }
+
+    function testTransmuteNotRegistered() public {
+        vm.startPrank(deployer);
+        uint256 id = 3;
+        SuperShares.mint(alice, id, THOUSAND_E18, "");
+
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = 3;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = THOUSAND_E18;
+        vm.stopPrank();
+        vm.startPrank(alice);
+
+        vm.expectRevert(IERC1155A.SYNTHETIC_ERC20_NOT_REGISTERED.selector);
+        SuperShares.transmuteToERC20(alice, id, THOUSAND_E18);
+
+        vm.expectRevert(IERC1155A.SYNTHETIC_ERC20_NOT_REGISTERED.selector);
+        SuperShares.transmuteToERC1155A(alice, id, THOUSAND_E18);
+
+        vm.expectRevert(IERC1155A.SYNTHETIC_ERC20_NOT_REGISTERED.selector);
+        SuperShares.transmuteBatchToERC20(alice, ids, amounts);
+
+        vm.expectRevert(IERC1155A.SYNTHETIC_ERC20_NOT_REGISTERED.selector);
+        SuperShares.transmuteBatchToERC1155A(alice, ids, amounts);
+    }
+
+    function testTransmuteSingleApprove() public {
+        vm.startPrank(deployer);
+        uint256 id = 3;
+        SuperShares.mint(alice, id, THOUSAND_E18, "");
+        sERC20 syntheticERC20Token = sERC20(SuperShares.registerSERC20(id));
+        vm.stopPrank();
+        vm.prank(alice);
+
+        SuperShares.setApprovalForOne(bob, id, THOUSAND_E18);
+
+        vm.prank(bob);
+        SuperShares.transmuteToERC20(alice, id, THOUSAND_E18);
+
+        assertEq(SuperShares.balanceOf(alice, id), 0);
+        assertEq(SuperShares.allowance(alice, bob, id), 0);
+
+        vm.startPrank(alice);
+
+        uint256 sERC20Balance = syntheticERC20Token.balanceOf(alice);
+        assertEq(sERC20Balance, THOUSAND_E18);
+
+        syntheticERC20Token.approve(address(bob), sERC20Balance);
+        vm.stopPrank();
+
+        vm.prank(bob);
+        /// NOTE: Test if 1:1 between 1155 and 20 always holds
+        SuperShares.transmuteToERC1155A(alice, id, sERC20Balance);
+
+        assertEq(SuperShares.balanceOf(alice, id), THOUSAND_E18);
+
+        assertEq(syntheticERC20Token.balanceOf(address(alice)), 0);
+    }
+
+    function testTransmuteSingleApproveNotMade() public {
+        vm.startPrank(deployer);
+        uint256 id = 3;
+        SuperShares.mint(alice, id, THOUSAND_E18, "");
+        sERC20 syntheticERC20Token = sERC20(SuperShares.registerSERC20(id));
+        vm.stopPrank();
+        vm.prank(alice);
+
+        SuperShares.setApprovalForOne(bob, id, THOUSAND_E18);
+
+        vm.prank(bob);
+        SuperShares.transmuteToERC20(alice, id, THOUSAND_E18);
+
+        assertEq(SuperShares.balanceOf(alice, id), 0);
+        assertEq(SuperShares.allowance(alice, bob, id), 0);
+
+        vm.startPrank(alice);
+
+        uint256 sERC20Balance = syntheticERC20Token.balanceOf(alice);
+        assertEq(sERC20Balance, THOUSAND_E18);
+
+        vm.stopPrank();
+
+        vm.prank(bob);
+        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, bob, 0, sERC20Balance));
+        SuperShares.transmuteToERC1155A(alice, id, sERC20Balance);
+    }
+
+    function testTransmuteBatch() public {
+        vm.startPrank(deployer);
+        uint256[] memory ids = new uint256[](2);
+        ids[0] = 3;
+        ids[1] = 4;
+
+        SuperShares.mint(alice, ids[0], THOUSAND_E18, "");
+        SuperShares.mint(alice, ids[1], THOUSAND_E18, "");
+
+        sERC20 syntheticERC20Token1 = sERC20(SuperShares.registerSERC20(ids[0]));
+        sERC20 syntheticERC20Token2 = sERC20(SuperShares.registerSERC20(ids[1]));
+
+        vm.stopPrank();
+        vm.startPrank(alice);
+
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = THOUSAND_E18;
+        amounts[1] = THOUSAND_E18;
+
+        SuperShares.transmuteBatchToERC20(alice, ids, amounts);
+
+        assertEq(SuperShares.balanceOf(alice, ids[0]), 0);
+        assertEq(SuperShares.balanceOf(alice, ids[1]), 0);
+
+        assertEq(syntheticERC20Token1.balanceOf(alice), THOUSAND_E18);
+        assertEq(syntheticERC20Token2.balanceOf(alice), THOUSAND_E18);
+
+        /// NOTE: Test if 1:1 between 1155 and 20 always holds
+        SuperShares.transmuteBatchToERC1155A(alice, ids, amounts);
+
+        assertEq(SuperShares.balanceOf(alice, ids[0]), THOUSAND_E18);
+        assertEq(SuperShares.balanceOf(alice, ids[1]), THOUSAND_E18);
+
+        assertEq(syntheticERC20Token1.balanceOf(address(alice)), 0);
+        assertEq(syntheticERC20Token2.balanceOf(address(alice)), 0);
+        vm.stopPrank();
+    }
+
+    function testTransmuteBatchSetApproveForMany() public {
+        vm.startPrank(deployer);
+        uint256[] memory ids = new uint256[](2);
+        ids[0] = 3;
+        ids[1] = 4;
+
+        SuperShares.mint(alice, ids[0], THOUSAND_E18, "");
+        SuperShares.mint(alice, ids[1], THOUSAND_E18, "");
+
+        sERC20 syntheticERC20Token1 = sERC20(SuperShares.registerSERC20(ids[0]));
+        sERC20 syntheticERC20Token2 = sERC20(SuperShares.registerSERC20(ids[1]));
+
+        vm.stopPrank();
+
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = THOUSAND_E18;
+        amounts[1] = THOUSAND_E18;
+        vm.prank(alice);
+
+        SuperShares.setApprovalForMany(bob, ids, amounts);
+
+        vm.prank(bob);
+
+        SuperShares.transmuteBatchToERC20(alice, ids, amounts);
+        vm.startPrank(alice);
+
+        assertEq(SuperShares.balanceOf(alice, ids[0]), 0);
+        assertEq(SuperShares.balanceOf(alice, ids[1]), 0);
+        assertEq(SuperShares.allowance(alice, address(SuperShares), ids[0]), 0);
+        assertEq(SuperShares.allowance(alice, address(SuperShares), ids[1]), 0);
+
+        assertEq(syntheticERC20Token1.balanceOf(alice), THOUSAND_E18);
+        assertEq(syntheticERC20Token2.balanceOf(alice), THOUSAND_E18);
+
+        syntheticERC20Token1.approve(bob, syntheticERC20Token1.balanceOf(alice));
+        syntheticERC20Token2.approve(bob, syntheticERC20Token2.balanceOf(alice));
+        vm.stopPrank();
+
+        vm.prank(bob);
+        /// NOTE: Test if 1:1 between 1155 and 20 always holds
+        SuperShares.transmuteBatchToERC1155A(alice, ids, amounts);
+
+        assertEq(SuperShares.balanceOf(alice, ids[0]), THOUSAND_E18);
+        assertEq(SuperShares.balanceOf(alice, ids[1]), THOUSAND_E18);
+
+        assertEq(syntheticERC20Token1.balanceOf(address(alice)), 0);
+        assertEq(syntheticERC20Token2.balanceOf(address(alice)), 0);
+    }
+
+    function testTransmuteBatchSetApproveForManyNotMade() public {
+        vm.startPrank(deployer);
+        uint256[] memory ids = new uint256[](2);
+        ids[0] = 3;
+        ids[1] = 4;
+
+        SuperShares.mint(alice, ids[0], THOUSAND_E18, "");
+        SuperShares.mint(alice, ids[1], THOUSAND_E18, "");
+
+        sERC20 syntheticERC20Token1 = sERC20(SuperShares.registerSERC20(ids[0]));
+        sERC20 syntheticERC20Token2 = sERC20(SuperShares.registerSERC20(ids[1]));
+
+        vm.stopPrank();
+
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = THOUSAND_E18;
+        amounts[1] = THOUSAND_E18;
+        vm.prank(alice);
+
+        SuperShares.setApprovalForMany(bob, ids, amounts);
+
+        vm.prank(bob);
+
+        SuperShares.transmuteBatchToERC20(alice, ids, amounts);
+        vm.startPrank(alice);
+
+        assertEq(SuperShares.balanceOf(alice, ids[0]), 0);
+        assertEq(SuperShares.balanceOf(alice, ids[1]), 0);
+        assertEq(SuperShares.allowance(alice, address(SuperShares), ids[0]), 0);
+        assertEq(SuperShares.allowance(alice, address(SuperShares), ids[1]), 0);
+
+        assertEq(syntheticERC20Token1.balanceOf(alice), THOUSAND_E18);
+        assertEq(syntheticERC20Token2.balanceOf(alice), THOUSAND_E18);
+
+        vm.stopPrank();
+        vm.prank(bob);
+        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, bob, 0, THOUSAND_E18));
+        /// NOTE: Test if 1:1 between 1155 and 20 always holds
+        SuperShares.transmuteBatchToERC1155A(alice, ids, amounts);
+    }
+
+    function testTransmuterAlreadyRegistered() public {
+        vm.prank(deployer);
+        sERC20 syntheticERC20Token = sERC20(SuperShares.registerSERC20(1));
+
+        vm.prank(deployer);
+        vm.expectRevert(IERC1155A.SYNTHETIC_ERC20_ALREADY_REGISTERED.selector);
+        syntheticERC20Token = sERC20(SuperShares.registerSERC20(1));
     }
 }

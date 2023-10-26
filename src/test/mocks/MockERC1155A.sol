@@ -2,10 +2,20 @@
 pragma solidity ^0.8.21;
 
 import { ERC1155A } from "../../ERC1155A.sol";
+import { sERC20 } from "../../sERC20.sol";
 import { Strings } from "openzeppelin-contracts/contracts/utils/Strings.sol";
 
 /// @notice For test purpouses we open mint()/burn() functions of ERC1155A
 contract MockERC1155A is ERC1155A {
+    function registerSERC20(uint256 id) external virtual override returns (address) {
+        if (synthethicTokenId[id] != address(0)) revert SYNTHETIC_ERC20_ALREADY_REGISTERED();
+
+        address syntheticToken = address(new sERC20("name", "symbol", 18));
+        synthethicTokenId[id] = syntheticToken;
+
+        return synthethicTokenId[id];
+    }
+
     /// @dev See ../ERC1155A.sol
     function uri(uint256 superFormId) public pure override returns (string memory) {
         return string(abi.encodePacked(_baseURI(), Strings.toString(superFormId)));
@@ -21,18 +31,18 @@ contract MockERC1155A is ERC1155A {
     ///////////////////////////////////////////////////////////////////////////
 
     function mint(address to, uint256 id, uint256 amount, bytes memory data) public virtual {
-        _mint(to, id, amount, data);
+        _mint(to, msg.sender, id, amount, data);
     }
 
     function batchMint(address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) public virtual {
-        _batchMint(to, ids, amounts, data);
+        _batchMint(to, msg.sender, ids, amounts, data);
     }
 
     function burn(address from, uint256 id, uint256 amount) public virtual {
-        _burn(from, id, amount);
+        _burn(from, msg.sender, id, amount);
     }
 
     function batchBurn(address from, uint256[] memory ids, uint256[] memory amounts) public virtual {
-        _batchBurn(from, ids, amounts);
+        _batchBurn(from, msg.sender, ids, amounts);
     }
 }

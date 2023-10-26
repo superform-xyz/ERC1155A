@@ -2,7 +2,6 @@
 pragma solidity ^0.8.21;
 
 import { DSTestPlus } from "solmate/test/utils/DSTestPlus.sol";
-import { DSInvariantTest } from "solmate/test/utils/DSInvariantTest.sol";
 import { ERC1155TokenReceiver } from "solmate/tokens/ERC1155.sol";
 import { MockERC1155A } from "./mocks/MockERC1155A.sol";
 
