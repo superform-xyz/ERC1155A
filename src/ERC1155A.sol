@@ -279,7 +279,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     //////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IERC1155A
-    function registerSERC20(uint256 id) external virtual override returns (address) {
+    function registerSERC20(uint256 id) external payable virtual override returns (address) {
         if (_totalSupply[id] == 0) revert ID_NOT_MINTED_YET();
         if (synthethicTokenId[id] != address(0)) revert SYNTHETIC_ERC20_ALREADY_REGISTERED();
 

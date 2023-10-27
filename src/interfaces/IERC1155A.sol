@@ -97,8 +97,10 @@ interface IERC1155A is IERC1155 {
     //////////////////////////////////////////////////////////////*/
 
     /// @dev Function set to virtual so that implementing protocols may introduce RBAC here or perform other changes
+    /// @notice payable to allow any implementing cross-chain protocol to be paid for fees for relaying this action to
+    /// various chain
     /// @param id of the ERC1155 to create a synthetic ERC20 for
-    function registerSERC20(uint256 id) external returns (address);
+    function registerSERC20(uint256 id) external payable returns (address);
 
     /// @notice Use transmuteBatchToERC20 to transmute multiple ERC1155 ids into separate ERC20
     /// Easier to transmute to 1155A than to transmute back to erc20 because of ERC1155 beauty!
