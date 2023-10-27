@@ -192,7 +192,13 @@ contract ERC1155ATest is Test {
         assertEq(url, returned);
     }
 
-    function testTransmute() public {
+    function testSERC20CreationNoIDMinted() public {
+        vm.startPrank(deployer);
+        vm.expectRevert(IERC1155A.ID_NOT_MINTED_YET.selector);
+        sERC20(SuperShares.registerSERC20(10));
+    }
+
+    function testSERC20Creation() public {
         vm.startPrank(deployer);
         uint256 id = 3;
         SuperShares.mint(alice, id, THOUSAND_E18, "");
@@ -217,7 +223,7 @@ contract ERC1155ATest is Test {
         vm.stopPrank();
     }
 
-    function testTransmuteNotRegistered() public {
+    function testSERC20CreationNotRegistered() public {
         vm.startPrank(deployer);
         uint256 id = 3;
         SuperShares.mint(alice, id, THOUSAND_E18, "");
@@ -242,7 +248,7 @@ contract ERC1155ATest is Test {
         SuperShares.transmuteBatchToERC1155A(alice, ids, amounts);
     }
 
-    function testTransmuteSingleApprove() public {
+    function testSERC20CreationSingleApprove() public {
         vm.startPrank(deployer);
         uint256 id = 3;
         SuperShares.mint(alice, id, THOUSAND_E18, "");
@@ -275,7 +281,7 @@ contract ERC1155ATest is Test {
         assertEq(syntheticERC20Token.balanceOf(address(alice)), 0);
     }
 
-    function testTransmuteSingleApproveNotMade() public {
+    function testSERC20CreationSingleApproveNotMade() public {
         vm.startPrank(deployer);
         uint256 id = 3;
         SuperShares.mint(alice, id, THOUSAND_E18, "");
@@ -303,7 +309,7 @@ contract ERC1155ATest is Test {
         SuperShares.transmuteToERC1155A(alice, id, sERC20Balance);
     }
 
-    function testTransmuteBatch() public {
+    function testSERC20CreationBatch() public {
         vm.startPrank(deployer);
         uint256[] memory ids = new uint256[](2);
         ids[0] = 3;
@@ -341,7 +347,7 @@ contract ERC1155ATest is Test {
         vm.stopPrank();
     }
 
-    function testTransmuteBatchSetApproveForMany() public {
+    function testSERC20CreationBatchSetApproveForMany() public {
         vm.startPrank(deployer);
         uint256[] memory ids = new uint256[](2);
         ids[0] = 3;
@@ -390,7 +396,7 @@ contract ERC1155ATest is Test {
         assertEq(syntheticERC20Token2.balanceOf(address(alice)), 0);
     }
 
-    function testTransmuteBatchSetApproveForManyNotMade() public {
+    function testSERC20CreationBatchSetApproveForManyNotMade() public {
         vm.startPrank(deployer);
         uint256[] memory ids = new uint256[](2);
         ids[0] = 3;
@@ -431,7 +437,7 @@ contract ERC1155ATest is Test {
         SuperShares.transmuteBatchToERC1155A(alice, ids, amounts);
     }
 
-    function testTransmuterAlreadyRegistered() public {
+    function testSERC20CreationrAlreadyRegistered() public {
         vm.prank(deployer);
         sERC20 syntheticERC20Token = sERC20(SuperShares.registerSERC20(1));
 

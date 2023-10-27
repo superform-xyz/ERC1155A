@@ -280,9 +280,10 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
     /// @inheritdoc IERC1155A
     function registerSERC20(uint256 id) external virtual override returns (address) {
+        if (_totalSupply[id] == 0) revert ID_NOT_MINTED_YET();
         if (synthethicTokenId[id] != address(0)) revert SYNTHETIC_ERC20_ALREADY_REGISTERED();
 
-        address syntheticToken = _createToken(id);
+        address syntheticToken = _registerSERC20(id);
 
         synthethicTokenId[id] = syntheticToken;
         return synthethicTokenId[id];
@@ -568,7 +569,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     }
 
     /// @dev allows a developer to integrate their logic to create an sERC20
-    function _createToken(uint256 id) internal virtual returns (address syntheticToken);
+    function _registerSERC20(uint256 id) internal virtual returns (address syntheticToken);
 
     /// @dev Implementation copied from openzeppelin-contracts/ERC1155 with new custom error logic and revert on
     /// transfer to address 0
