@@ -41,6 +41,9 @@ interface IERC1155A is IERC1155 {
 
     /// @dev forbids transfers to address 0
     error TRANSFER_TO_ADDRESS_ZERO();
+
+    /// @dev forbids registering a serc20 if no associated erc1155a has been minted yet first
+    error ID_NOT_MINTED_YET();
     /*//////////////////////////////////////////////////////////////
                               SINGLE APPROVE
     //////////////////////////////////////////////////////////////*/

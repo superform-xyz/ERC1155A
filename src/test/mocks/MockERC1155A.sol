@@ -37,7 +37,7 @@ contract MockERC1155A is ERC1155A {
         _batchBurn(from, msg.sender, ids, amounts);
     }
 
-    function _createToken(uint256 /*id*/ ) internal virtual override returns (address syntheticToken) {
+    function _registerSERC20(uint256 /*id*/ ) internal virtual override returns (address syntheticToken) {
         syntheticToken = address(new sERC20("name", "symbol", 18));
     }
 }
