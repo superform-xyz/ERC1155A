@@ -18,6 +18,14 @@ interface IERC1155A is IERC1155 {
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
     //////////////////////////////////////////////////////////////*/
+    /// @dev for batch operations, if there is a length mismatch
+    error LENGTH_MISMATCH();
+
+    /// @dev operator is not an owner of ids or not enough of allowance, or is not approvedForAll
+    error NOT_AUTHORIZED();
+
+    /// @dev if allowance is lower than amount for the operation
+    error NOT_ENOUGH_ALLOWANCE();
 
     /// @dev Thrown when SERC20 was already registered
     error SYNTHETIC_ERC20_ALREADY_REGISTERED();
@@ -30,6 +38,9 @@ interface IERC1155A is IERC1155 {
 
     /// @dev address is 0
     error ZERO_ADDRESS();
+
+    /// @dev forbids transfers to address 0
+    error TRANSFER_TO_ADDRESS_ZERO();
     /*//////////////////////////////////////////////////////////////
                               SINGLE APPROVE
     //////////////////////////////////////////////////////////////*/
@@ -131,4 +142,8 @@ interface IERC1155A is IERC1155 {
     /// @notice Public getter to know if a token id exists
     /// @dev determines based on total supply for the id
     function exists(uint256 id) external view returns (bool);
+
+    /// @dev handy helper to check if a SERC20 is registered
+    /// @param id of the ERC1155 to check if a synthetic ERC20 exists for
+    function sERC20Exists(uint256 id) external view returns (bool);
 }

@@ -7,15 +7,6 @@ import { Strings } from "openzeppelin-contracts/contracts/utils/Strings.sol";
 
 /// @notice For test purpouses we open mint()/burn() functions of ERC1155A
 contract MockERC1155A is ERC1155A {
-    function registerSERC20(uint256 id) external virtual override returns (address) {
-        if (synthethicTokenId[id] != address(0)) revert SYNTHETIC_ERC20_ALREADY_REGISTERED();
-
-        address syntheticToken = address(new sERC20("name", "symbol", 18));
-        synthethicTokenId[id] = syntheticToken;
-
-        return synthethicTokenId[id];
-    }
-
     /// @dev See ../ERC1155A.sol
     function uri(uint256 superFormId) public pure override returns (string memory) {
         return string(abi.encodePacked(_baseURI(), Strings.toString(superFormId)));
@@ -44,5 +35,9 @@ contract MockERC1155A is ERC1155A {
 
     function batchBurn(address from, uint256[] memory ids, uint256[] memory amounts) public virtual {
         _batchBurn(from, msg.sender, ids, amounts);
+    }
+
+    function _createToken(uint256 /*id*/ ) internal virtual override returns (address syntheticToken) {
+        syntheticToken = address(new sERC20("name", "symbol", 18));
     }
 }

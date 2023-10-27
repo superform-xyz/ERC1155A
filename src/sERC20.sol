@@ -2,11 +2,12 @@
 pragma solidity ^0.8.21;
 
 import { ERC20 } from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
-
+import { IsERC20 } from "./interfaces/IsERC20.sol";
 /// @title sERC20
 /// @author Zeropoint Labs.
 /// @dev Synthetic ERC20 tokens out of 1155a
-contract sERC20 is ERC20 {
+
+contract sERC20 is ERC20, IsERC20 {
     address public immutable ERC1155A;
     uint8 private immutable tokenDecimals;
 
@@ -24,16 +25,19 @@ contract sERC20 is ERC20 {
         tokenDecimals = decimals_;
     }
 
-    function mint(address owner, uint256 amount) external onlyTokenSplitter {
+    /// inheritdoc IsERC20
+    function mint(address owner, uint256 amount) external override onlyTokenSplitter {
         _mint(owner, amount);
     }
 
-    function burn(address owner, address spender, uint256 amount) external onlyTokenSplitter {
-        if (owner != spender) _spendAllowance(owner, spender, amount);
+    /// inheritdoc IsERC20
+    function burn(address owner, address operator, uint256 amount) external override onlyTokenSplitter {
+        if (owner != operator) _spendAllowance(owner, operator, amount);
 
         _burn(owner, amount);
     }
 
+    /// inheritdoc IsERC20
     function decimals() public view virtual override returns (uint8) {
         return tokenDecimals;
     }

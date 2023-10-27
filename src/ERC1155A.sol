@@ -3,19 +3,23 @@ pragma solidity ^0.8.21;
 
 import { IERC1155A } from "./interfaces/IERC1155A.sol";
 import { Strings } from "openzeppelin-contracts/contracts/utils/Strings.sol";
-import { sERC20 } from "./sERC20.sol";
+import { IERC1155Errors } from "openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
+import { IERC1155Receiver } from "openzeppelin-contracts/contracts/token/ERC1155/IERC1155Receiver.sol";
+import { IsERC20 } from "./interfaces/IsERC20.sol";
 
 /**
  * @title ERC1155A
  * @dev ERC1155A is a proposed extension for ERC1155.
- * @dev Adapted solmate implementation, follows ERC1155 standard interface
+ * @dev Hybrid solmate/openzeppelin implementation, follows ERC1155 standard interface
  *
  * 1. Single id approve capability
  * 2. Allowance management for single id approve
  * 3. Metadata build out of baseURI and id uint value into offchain metadata address
+ * 4. Range based approvals
+ * 5. Converting to synthetic ERC20s back and forth
  *
  */
-abstract contract ERC1155A is IERC1155A {
+abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     /*//////////////////////////////////////////////////////////////
                              ERC1155a STORAGE
     //////////////////////////////////////////////////////////////*/
@@ -87,7 +91,7 @@ abstract contract ERC1155A is IERC1155A {
 
             /// @dev operator is not an owner of ids or not enough of allowance, or is not approvedForAll
         } else {
-            revert("NOT_AUTHORIZED");
+            revert NOT_AUTHORIZED();
         }
     }
 
@@ -119,7 +123,7 @@ abstract contract ERC1155A is IERC1155A {
         bool singleApproval;
         uint256 len = ids.length;
 
-        require(len == amounts.length, "LENGTH_MISMATCH");
+        if (len != amounts.length) revert LENGTH_MISMATCH();
 
         /// @dev case to handle single id / multi id approvals
         if (msg.sender != from && !isApprovedForAll[from][msg.sender]) {
@@ -135,7 +139,7 @@ abstract contract ERC1155A is IERC1155A {
             amount = amounts[i];
 
             if (singleApproval) {
-                require(allowance(from, msg.sender, id) >= amount, "NOT_AUTHORIZED");
+                if (allowance(from, msg.sender, id) < amount) revert NOT_ENOUGH_ALLOWANCE();
                 allowances[from][to][id] -= amount;
             }
 
@@ -151,13 +155,7 @@ abstract contract ERC1155A is IERC1155A {
 
         emit TransferBatch(msg.sender, from, to, ids, amounts);
 
-        require(
-            to.code.length == 0
-                ? to != address(0)
-                : ERC1155TokenReceiver(to).onERC1155BatchReceived(msg.sender, from, ids, amounts, data)
-                    == ERC1155TokenReceiver.onERC1155BatchReceived.selector,
-            "UNSAFE_RECIPIENT"
-        );
+        _doSafeBatchTransferAcceptanceCheck(msg.sender, from, to, ids, amounts, data);
     }
 
     /// @dev Implementation copied from solmate/ERC1155
@@ -170,7 +168,7 @@ abstract contract ERC1155A is IERC1155A {
         virtual
         returns (uint256[] memory balances)
     {
-        require(owners.length == ids.length, "LENGTH_MISMATCH");
+        if (owners.length != ids.length) revert LENGTH_MISMATCH();
 
         balances = new uint256[](owners.length);
 
@@ -281,7 +279,14 @@ abstract contract ERC1155A is IERC1155A {
     //////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IERC1155A
-    function registerSERC20(uint256 id) external virtual override returns (address);
+    function registerSERC20(uint256 id) external virtual override returns (address) {
+        if (synthethicTokenId[id] != address(0)) revert SYNTHETIC_ERC20_ALREADY_REGISTERED();
+
+        address syntheticToken = _createToken(id);
+
+        synthethicTokenId[id] = syntheticToken;
+        return synthethicTokenId[id];
+    }
 
     /// @inheritdoc IERC1155A
     function transmuteBatchToERC20(address owner, uint256[] memory ids, uint256[] memory amounts) external override {
@@ -292,7 +297,7 @@ abstract contract ERC1155A is IERC1155A {
             address sERC20Token = synthethicTokenId[ids[i]];
             if (sERC20Token == address(0)) revert SYNTHETIC_ERC20_NOT_REGISTERED();
 
-            sERC20(sERC20Token).mint(owner, amounts[i]);
+            IsERC20(sERC20Token).mint(owner, amounts[i]);
             unchecked {
                 ++i;
             }
@@ -314,7 +319,7 @@ abstract contract ERC1155A is IERC1155A {
             address sERC20Token = synthethicTokenId[ids[i]];
             if (sERC20Token == address(0)) revert SYNTHETIC_ERC20_NOT_REGISTERED();
             /// @dev an approval is needed on each sERC20 to burn
-            sERC20(sERC20Token).burn(owner, msg.sender, amounts[i]);
+            IsERC20(sERC20Token).burn(owner, msg.sender, amounts[i]);
             unchecked {
                 ++i;
             }
@@ -333,7 +338,7 @@ abstract contract ERC1155A is IERC1155A {
         address sERC20Token = synthethicTokenId[id];
         if (sERC20Token == address(0)) revert SYNTHETIC_ERC20_NOT_REGISTERED();
 
-        sERC20(sERC20Token).mint(owner, amount);
+        IsERC20(sERC20Token).mint(owner, amount);
         emit TransmutedToERC20(owner, id, amount);
     }
 
@@ -343,7 +348,7 @@ abstract contract ERC1155A is IERC1155A {
         if (sERC20Token == address(0)) revert SYNTHETIC_ERC20_NOT_REGISTERED();
 
         /// @dev an approval is needed to burn
-        sERC20(sERC20Token).burn(owner, msg.sender, amount);
+        IsERC20(sERC20Token).burn(owner, msg.sender, amount);
 
         _mint(owner, msg.sender, id, amount, bytes(""));
 
@@ -376,6 +381,11 @@ abstract contract ERC1155A is IERC1155A {
     /// @notice See {IERC1155A-exists}
     function exists(uint256 id) external view virtual returns (bool) {
         return _totalSupply[id] > 0;
+    }
+
+    /// @dev handy helper to check if a SERC20 is registered
+    function sERC20Exists(uint256 id) external view virtual returns (bool) {
+        return synthethicTokenId[id] != address(0);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -411,13 +421,8 @@ abstract contract ERC1155A is IERC1155A {
         balanceOf[to][id] += amount;
 
         emit TransferSingle(operator, from, to, id, amount);
-        require(
-            to.code.length == 0
-                ? to != address(0)
-                : ERC1155TokenReceiver(to).onERC1155Received(operator, from, id, amount, data)
-                    == ERC1155TokenReceiver.onERC1155Received.selector,
-            "UNSAFE_RECIPIENT"
-        );
+
+        _doSafeTransferAcceptanceCheck(operator, from, to, id, amount, data);
     }
 
     /// @notice Internal function for decreasing single id approval amount
@@ -467,13 +472,7 @@ abstract contract ERC1155A is IERC1155A {
 
         emit TransferSingle(operator, address(0), to, id, amount);
 
-        require(
-            to.code.length == 0
-                ? to != address(0)
-                : ERC1155TokenReceiver(to).onERC1155Received(operator, address(0), id, amount, data)
-                    == ERC1155TokenReceiver.onERC1155Received.selector,
-            "UNSAFE_RECIPIENT"
-        );
+        _doSafeTransferAcceptanceCheck(operator, address(0), to, id, amount, data);
     }
 
     /// @dev Implementation copied from solmate/ERC1155 and adapted with operator logic
@@ -489,7 +488,7 @@ abstract contract ERC1155A is IERC1155A {
     {
         uint256 idsLength = ids.length; // Saves MLOADs.
 
-        require(idsLength == amounts.length, "LENGTH_MISMATCH");
+        if (idsLength != amounts.length) revert LENGTH_MISMATCH();
 
         for (uint256 i = 0; i < idsLength;) {
             balanceOf[to][ids[i]] += amounts[i];
@@ -504,13 +503,7 @@ abstract contract ERC1155A is IERC1155A {
 
         emit TransferBatch(operator, address(0), to, ids, amounts);
 
-        require(
-            to.code.length == 0
-                ? to != address(0)
-                : ERC1155TokenReceiver(to).onERC1155BatchReceived(operator, address(0), ids, amounts, data)
-                    == ERC1155TokenReceiver.onERC1155BatchReceived.selector,
-            "UNSAFE_RECIPIENT"
-        );
+        _doSafeBatchTransferAcceptanceCheck(operator, address(0), to, ids, amounts, data);
     }
 
     /// @dev Implementation copied from solmate/ERC1155 and adapted with operator logic
@@ -531,7 +524,7 @@ abstract contract ERC1155A is IERC1155A {
             singleApproval = true;
         }
 
-        require(idsLength == amounts.length, "LENGTH_MISMATCH");
+        if (idsLength != amounts.length) revert LENGTH_MISMATCH();
 
         uint256 id;
         uint256 amount;
@@ -541,7 +534,7 @@ abstract contract ERC1155A is IERC1155A {
             amount = amounts[i];
 
             if (singleApproval) {
-                require(allowance(from, operator, id) >= amount, "NOT_AUTHORIZED");
+                if (allowance(from, operator, id) < amount) revert NOT_ENOUGH_ALLOWANCE();
                 allowances[from][operator][id] -= amount;
             }
 
@@ -563,7 +556,7 @@ abstract contract ERC1155A is IERC1155A {
         // Check if the msg.sender is the owner or is approved for all tokens
         if (operator != from && !isApprovedForAll[from][operator]) {
             // If not, then check if the msg.sender has sufficient allowance
-            require(allowance(from, operator, id) >= amount, "NOT_AUTHORIZED");
+            if (allowance(from, operator, id) < amount) revert NOT_ENOUGH_ALLOWANCE();
             allowances[from][operator][id] -= amount; // Deduct the burned amount from the allowance
         }
 
@@ -574,30 +567,75 @@ abstract contract ERC1155A is IERC1155A {
         emit TransferSingle(operator, from, address(0), id, amount);
     }
 
-    /// @dev handy helper to check if a SERC20 is registered
-    function _sERC20Exists(uint256 id) external view virtual returns (bool) {
-        return synthethicTokenId[id] != address(0);
-    }
-}
+    /// @dev allows a developer to integrate their logic to create an sERC20
+    function _createToken(uint256 id) internal virtual returns (address syntheticToken);
 
-/// @notice A generic interface for a contract which properly accepts ERC1155 tokens.
-/// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/tokens/ERC1155.sol)
-abstract contract ERC1155TokenReceiver {
-    function onERC1155Received(address, address, uint256, uint256, bytes calldata) external virtual returns (bytes4) {
-        return ERC1155TokenReceiver.onERC1155Received.selector;
-    }
-
-    function onERC1155BatchReceived(
-        address,
-        address,
-        uint256[] calldata,
-        uint256[] calldata,
-        bytes calldata
+    /// @dev Implementation copied from openzeppelin-contracts/ERC1155 with new custom error logic and revert on
+    /// transfer to address 0
+    function _doSafeTransferAcceptanceCheck(
+        address operator,
+        address from,
+        address to,
+        uint256 id,
+        uint256 value,
+        bytes memory data
     )
-        external
-        virtual
-        returns (bytes4)
+        private
     {
-        return ERC1155TokenReceiver.onERC1155BatchReceived.selector;
+        if (to.code.length > 0) {
+            try IERC1155Receiver(to).onERC1155Received(operator, from, id, value, data) returns (bytes4 response) {
+                if (response != IERC1155Receiver.onERC1155Received.selector) {
+                    // Tokens rejected
+                    revert ERC1155InvalidReceiver(to);
+                }
+            } catch (bytes memory reason) {
+                if (reason.length == 0) {
+                    // non-ERC1155Receiver implementer
+                    revert ERC1155InvalidReceiver(to);
+                } else {
+                    /// @solidity memory-safe-assembly
+                    assembly {
+                        revert(add(32, reason), mload(reason))
+                    }
+                }
+            }
+        } else {
+            if (to == address(0)) revert TRANSFER_TO_ADDRESS_ZERO();
+        }
+    }
+
+    /// @dev Implementation copied from openzeppelin-contracts/ERC1155 with new custom error logic  and revert on
+    /// transfer to address 0
+    function _doSafeBatchTransferAcceptanceCheck(
+        address operator,
+        address from,
+        address to,
+        uint256[] memory ids,
+        uint256[] memory values,
+        bytes memory data
+    )
+        private
+    {
+        if (to.code.length > 0) {
+            try IERC1155Receiver(to).onERC1155BatchReceived(operator, from, ids, values, data) returns (bytes4 response)
+            {
+                if (response != IERC1155Receiver.onERC1155BatchReceived.selector) {
+                    // Tokens rejected
+                    revert ERC1155InvalidReceiver(to);
+                }
+            } catch (bytes memory reason) {
+                if (reason.length == 0) {
+                    // non-ERC1155Receiver implementer
+                    revert ERC1155InvalidReceiver(to);
+                } else {
+                    /// @solidity memory-safe-assembly
+                    assembly {
+                        revert(add(32, reason), mload(reason))
+                    }
+                }
+            }
+        } else {
+            if (to == address(0)) revert TRANSFER_TO_ADDRESS_ZERO();
+        }
     }
 }
