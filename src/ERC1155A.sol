@@ -1,5 +1,5 @@
 /// SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.21;
+pragma solidity ^0.8.23;
 
 import { IERC1155A } from "./interfaces/IERC1155A.sol";
 import { Strings } from "openzeppelin-contracts/contracts/utils/Strings.sol";
@@ -134,7 +134,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         uint256 id;
         uint256 amount;
 
-        for (uint256 i; i < len;) {
+        for (uint256 i; i < len; ++i) {
             id = ids[i];
             amount = amounts[i];
 
@@ -145,12 +145,6 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
             balanceOf[from][id] -= amount;
             balanceOf[to][id] += amount;
-
-            // An array can't have a total length
-            // larger than the max uint256 value.
-            unchecked {
-                ++i;
-            }
         }
 
         emit TransferBatch(msg.sender, from, to, ids, amounts);
@@ -172,12 +166,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
         balances = new uint256[](owners.length);
 
-        // Unchecked because the only math done is incrementing
-        // the array index counter which cannot possibly overflow.
-        unchecked {
-            for (uint256 i = 0; i < owners.length; ++i) {
-                balances[i] = balanceOf[owners[i]][ids[i]];
-            }
+        for (uint256 i = 0; i < owners.length; ++i) {
+            balances[i] = balanceOf[owners[i]][ids[i]];
         }
     }
 
@@ -199,9 +189,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     /// inheritdoc IERC1155A
     function increaseAllowance(address spender, uint256 id, uint256 addedValue) public virtual returns (bool) {
         address owner = msg.sender;
-        unchecked {
-            _setApprovalForOne(owner, spender, id, allowance(owner, spender, id) + addedValue);
-        }
+        _setApprovalForOne(owner, spender, id, allowance(owner, spender, id) + addedValue);
         return true;
     }
 
@@ -219,12 +207,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     function setApprovalForMany(address spender, uint256[] memory ids, uint256[] memory amounts) public virtual {
         address owner = msg.sender;
 
-        for (uint256 i; i < ids.length;) {
+        for (uint256 i; i < ids.length; ++i) {
             _setApprovalForOne(owner, spender, ids[i], amounts[i]);
-
-            unchecked {
-                ++i;
-            }
         }
     }
 
@@ -240,12 +224,9 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     {
         address owner = msg.sender;
         uint256 id;
-        for (uint256 i; i < ids.length;) {
+        for (uint256 i; i < ids.length; ++i) {
             id = ids[i];
-            unchecked {
-                _setApprovalForOne(owner, spender, id, allowance(owner, spender, id) + addedValues[i]);
-                ++i;
-            }
+            _setApprovalForOne(owner, spender, id, allowance(owner, spender, id) + addedValues[i]);
         }
 
         return true;
@@ -263,12 +244,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     {
         address owner = msg.sender;
 
-        for (uint256 i; i < ids.length;) {
+        for (uint256 i; i < ids.length; ++i) {
             _decreaseAllowance(owner, spender, ids[i], subtractedValues[i]);
-
-            unchecked {
-                ++i;
-            }
         }
 
         return true;
@@ -294,14 +271,11 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         /// @dev an approval is needed to burn
         _batchBurn(owner, msg.sender, ids, amounts);
 
-        for (uint256 i = 0; i < ids.length;) {
+        for (uint256 i = 0; i < ids.length; ++i) {
             address sERC20Token = synthethicTokenId[ids[i]];
             if (sERC20Token == address(0)) revert SYNTHETIC_ERC20_NOT_REGISTERED();
 
             IsERC20(sERC20Token).mint(owner, amounts[i]);
-            unchecked {
-                ++i;
-            }
         }
 
         emit TransmutedBatchToERC20(owner, ids, amounts);
@@ -316,14 +290,11 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         external
         override
     {
-        for (uint256 i = 0; i < ids.length;) {
+        for (uint256 i = 0; i < ids.length; ++i) {
             address sERC20Token = synthethicTokenId[ids[i]];
             if (sERC20Token == address(0)) revert SYNTHETIC_ERC20_NOT_REGISTERED();
             /// @dev an approval is needed on each sERC20 to burn
             IsERC20(sERC20Token).burn(owner, msg.sender, amounts[i]);
-            unchecked {
-                ++i;
-            }
         }
 
         _batchMint(owner, msg.sender, ids, amounts, bytes(""));
@@ -442,9 +413,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     {
         uint256 currentAllowance = allowance(owner, operator, id);
         if (currentAllowance < subtractedValue) revert DECREASED_ALLOWANCE_BELOW_ZERO();
-        unchecked {
-            _setApprovalForOne(owner, operator, id, currentAllowance - subtractedValue);
-        }
+        _setApprovalForOne(owner, operator, id, currentAllowance - subtractedValue);
 
         return true;
     }
@@ -491,15 +460,9 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
         if (idsLength != amounts.length) revert LENGTH_MISMATCH();
 
-        for (uint256 i = 0; i < idsLength;) {
+        for (uint256 i = 0; i < idsLength; ++i) {
             balanceOf[to][ids[i]] += amounts[i];
             _totalSupply[ids[i]] += amounts[i];
-
-            // An array can't have a total length
-            // larger than the max uint256 value.
-            unchecked {
-                ++i;
-            }
         }
 
         emit TransferBatch(operator, address(0), to, ids, amounts);
@@ -530,7 +493,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         uint256 id;
         uint256 amount;
 
-        for (uint256 i = 0; i < idsLength;) {
+        for (uint256 i = 0; i < idsLength; ++i) {
             id = ids[i];
             amount = amounts[i];
 
@@ -541,12 +504,6 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
             balanceOf[from][id] -= amount;
             _totalSupply[id] -= amount;
-
-            // An array can't have a total length
-            // larger than the max uint256 value.
-            unchecked {
-                ++i;
-            }
         }
 
         emit TransferBatch(operator, from, address(0), ids, amounts);
