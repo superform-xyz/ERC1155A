@@ -1,5 +1,5 @@
 /// SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.21;
+pragma solidity ^0.8.23;
 
 import { ERC1155A } from "../../ERC1155A.sol";
 import { sERC20 } from "../../sERC20.sol";

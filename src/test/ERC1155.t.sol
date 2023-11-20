@@ -1,5 +1,5 @@
 /// SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.21;
+pragma solidity ^0.8.23;
 
 import { DSTestPlus } from "solmate/test/utils/DSTestPlus.sol";
 import { ERC1155TokenReceiver } from "solmate/tokens/ERC1155.sol";
