@@ -5,7 +5,7 @@ import { IERC1155A } from "./interfaces/IERC1155A.sol";
 import { Strings } from "openzeppelin-contracts/contracts/utils/Strings.sol";
 import { IERC1155Errors } from "openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
 import { IERC1155Receiver } from "openzeppelin-contracts/contracts/token/ERC1155/IERC1155Receiver.sol";
-import { IsERC20 } from "./interfaces/IsERC20.sol";
+import { IaERC20 } from "./interfaces/IaERC20.sol";
 
 /**
  * @title ERC1155A
@@ -16,7 +16,7 @@ import { IsERC20 } from "./interfaces/IsERC20.sol";
  * 2. Allowance management for single id approve
  * 3. Metadata build out of baseURI and id uint value into offchain metadata address
  * 4. Range based approvals
- * 5. Converting to synthetic ERC20s back and forth
+ * 5. Converting to ERC20s back and forth (called AERC20)
  *
  */
 abstract contract ERC1155A is IERC1155A, IERC1155Errors {
@@ -35,8 +35,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     /// @dev Implementation copied from solmate/ERC1155
     mapping(address => mapping(address => bool)) public isApprovedForAll;
 
-    /// @dev mapping of token ids to synthetic token addresses
-    mapping(uint256 id => address syntheticToken) public synthethicTokenId;
+    /// @dev mapping of token ids to aErc20 token addresses
+    mapping(uint256 id => address aErc20Token) public aErc20TokenId;
 
     ///////////////////////////////////////////////////////////////////////////
     ///                     ERC1155-A LOGIC SECTION                         ///
@@ -252,18 +252,18 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     }
 
     /*///////////////////////////////////////////////////////////////
-                    SERC20 AND TRANSMUTE LOGIC 
+                    AERC20 AND TRANSMUTE LOGIC 
     //////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IERC1155A
-    function registerSERC20(uint256 id) external payable virtual override returns (address) {
+    function registerAERC20(uint256 id) external payable virtual override returns (address) {
         if (_totalSupply[id] == 0) revert ID_NOT_MINTED_YET();
-        if (synthethicTokenId[id] != address(0)) revert SYNTHETIC_ERC20_ALREADY_REGISTERED();
+        if (aErc20TokenId[id] != address(0)) revert AERC20_ALREADY_REGISTERED();
 
-        address syntheticToken = _registerSERC20(id);
+        address aErc20Token = _registerAERC20(id);
 
-        synthethicTokenId[id] = syntheticToken;
-        return synthethicTokenId[id];
+        aErc20TokenId[id] = aErc20Token;
+        return aErc20TokenId[id];
     }
 
     /// @inheritdoc IERC1155A
@@ -272,10 +272,10 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         _batchBurn(owner, msg.sender, ids, amounts);
 
         for (uint256 i = 0; i < ids.length; ++i) {
-            address sERC20Token = synthethicTokenId[ids[i]];
-            if (sERC20Token == address(0)) revert SYNTHETIC_ERC20_NOT_REGISTERED();
+            address aERC20Token = aErc20TokenId[ids[i]];
+            if (aERC20Token == address(0)) revert AERC20_NOT_REGISTERED();
 
-            IsERC20(sERC20Token).mint(owner, amounts[i]);
+            IaERC20(aERC20Token).mint(owner, amounts[i]);
         }
 
         emit TransmutedBatchToERC20(owner, ids, amounts);
@@ -291,10 +291,10 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         override
     {
         for (uint256 i = 0; i < ids.length; ++i) {
-            address sERC20Token = synthethicTokenId[ids[i]];
-            if (sERC20Token == address(0)) revert SYNTHETIC_ERC20_NOT_REGISTERED();
-            /// @dev an approval is needed on each sERC20 to burn
-            IsERC20(sERC20Token).burn(owner, msg.sender, amounts[i]);
+            address aERC20Token = aErc20TokenId[ids[i]];
+            if (aERC20Token == address(0)) revert AERC20_NOT_REGISTERED();
+            /// @dev an approval is needed on each aERC20 to burn
+            IaERC20(aERC20Token).burn(owner, msg.sender, amounts[i]);
         }
 
         _batchMint(owner, msg.sender, ids, amounts, bytes(""));
@@ -307,28 +307,28 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         /// @dev an approval is needed to burn
         _burn(owner, msg.sender, id, amount);
 
-        address sERC20Token = synthethicTokenId[id];
-        if (sERC20Token == address(0)) revert SYNTHETIC_ERC20_NOT_REGISTERED();
+        address aERC20Token = aErc20TokenId[id];
+        if (aERC20Token == address(0)) revert AERC20_NOT_REGISTERED();
 
-        IsERC20(sERC20Token).mint(owner, amount);
+        IaERC20(aERC20Token).mint(owner, amount);
         emit TransmutedToERC20(owner, id, amount);
     }
 
     /// @inheritdoc IERC1155A
     function transmuteToERC1155A(address owner, uint256 id, uint256 amount) external override {
-        address sERC20Token = synthethicTokenId[id];
-        if (sERC20Token == address(0)) revert SYNTHETIC_ERC20_NOT_REGISTERED();
+        address aERC20Token = aErc20TokenId[id];
+        if (aERC20Token == address(0)) revert AERC20_NOT_REGISTERED();
 
         /// @dev an approval is needed to burn
-        IsERC20(sERC20Token).burn(owner, msg.sender, amount);
+        IaERC20(aERC20Token).burn(owner, msg.sender, amount);
 
         _mint(owner, msg.sender, id, amount, bytes(""));
 
         emit TransmutedToERC1155A(owner, id, amount);
     }
 
-    function getSyntheticTokenAddress(uint256 id) external view virtual override returns (address) {
-        return synthethicTokenId[id];
+    function getERC20TokenAddress(uint256 id) external view virtual override returns (address) {
+        return aErc20TokenId[id];
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -355,9 +355,9 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         return _totalSupply[id] > 0;
     }
 
-    /// @dev handy helper to check if a SERC20 is registered
-    function sERC20Exists(uint256 id) external view virtual returns (bool) {
-        return synthethicTokenId[id] != address(0);
+    /// @dev handy helper to check if a AERC20 is registered
+    function aERC20Exists(uint256 id) external view virtual returns (bool) {
+        return aErc20TokenId[id] != address(0);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -377,7 +377,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
     /// @notice Internal safeTranferFrom function called after all checks from the public function are done
     /// @dev Notice `operator` param. It's msg.sender to the safeTransferFrom function. Function is specific to
-    /// SuperForm singleId approve logic.
+    /// @dev singleId approve logic.
     function _safeTransferFrom(
         address operator,
         address from,
@@ -525,8 +525,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         emit TransferSingle(operator, from, address(0), id, amount);
     }
 
-    /// @dev allows a developer to integrate their logic to create an sERC20
-    function _registerSERC20(uint256 id) internal virtual returns (address syntheticToken);
+    /// @dev allows a developer to integrate their logic to create an aERC20
+    function _registerAERC20(uint256 id) internal virtual returns (address aErc20Token);
 
     /// @dev Implementation copied from openzeppelin-contracts/ERC1155 with new custom error logic and revert on
     /// transfer to address 0
