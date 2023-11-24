@@ -27,11 +27,11 @@ interface IERC1155A is IERC1155 {
     /// @dev if allowance is lower than amount for the operation
     error NOT_ENOUGH_ALLOWANCE();
 
-    /// @dev Thrown when SERC20 was already registered
-    error SYNTHETIC_ERC20_ALREADY_REGISTERED();
+    /// @dev Thrown when AERC20 was already registered
+    error AERC20_ALREADY_REGISTERED();
 
-    /// @dev Thrown when SERC20 was not registered
-    error SYNTHETIC_ERC20_NOT_REGISTERED();
+    /// @dev Thrown when AERC20 was not registered
+    error AERC20_NOT_REGISTERED();
 
     /// @dev allowance amount cannot be decreased below zero
     error DECREASED_ALLOWANCE_BELOW_ZERO();
@@ -42,7 +42,7 @@ interface IERC1155A is IERC1155 {
     /// @dev forbids transfers to address 0
     error TRANSFER_TO_ADDRESS_ZERO();
 
-    /// @dev forbids registering a serc20 if no associated erc1155a has been minted yet first
+    /// @dev forbids registering a saErc20 if no associated erc1155a has been minted yet first
     error ID_NOT_MINTED_YET();
     /*//////////////////////////////////////////////////////////////
                               SINGLE APPROVE
@@ -93,17 +93,17 @@ interface IERC1155A is IERC1155 {
         returns (bool);
 
     /*//////////////////////////////////////////////////////////////
-                    SERC20 AND TRANSMUTE LOGIC 
+                    AERC20 AND TRANSMUTE LOGIC 
     //////////////////////////////////////////////////////////////*/
 
     /// @dev Function set to virtual so that implementing protocols may introduce RBAC here or perform other changes
     /// @notice payable to allow any implementing cross-chain protocol to be paid for fees for relaying this action to
     /// various chain
-    /// @param id of the ERC1155 to create a synthetic ERC20 for
-    function registerSERC20(uint256 id) external payable returns (address);
+    /// @param id of the ERC1155 to create a ERC20 for
+    function registerAERC20(uint256 id) external payable returns (address);
 
     /// @notice Use transmuteBatchToERC20 to transmute multiple ERC1155 ids into separate ERC20
-    /// Easier to transmute to 1155A than to transmute back to erc20 because of ERC1155 beauty!
+    /// Easier to transmute to 1155A than to transmute back to aErc20 because of ERC1155 beauty!
     /// @param onBehalfOf address of the user on whose behalf this transmutation is happening
     /// @param ids ids of the ERC1155A to transmute
     /// @param amounts amounts of the ERC1155A to transmute
@@ -116,8 +116,8 @@ interface IERC1155A is IERC1155 {
     function transmuteBatchToERC1155A(address onBehalfOf, uint256[] memory ids, uint256[] memory amounts) external;
 
     /// @param onBehalfOf address of the user on whose behalf this transmutation is happening
-    /// @param id id of the ERC20s to transmute to erc20
-    /// @param amount amount of the ERC20s to transmute to erc20
+    /// @param id id of the ERC20s to transmute to aErc20
+    /// @param amount amount of the ERC20s to transmute to aErc20
     function transmuteToERC20(address onBehalfOf, uint256 id, uint256 amount) external;
 
     /// @param onBehalfOf address of the user on whose behalf this transmutation is happening
@@ -125,17 +125,17 @@ interface IERC1155A is IERC1155 {
     /// @param amount amount of the ERC20s to transmute to erc1155
     function transmuteToERC1155A(address onBehalfOf, uint256 id, uint256 amount) external;
 
-    /// @notice Public getter for the address of the synthetic token for a given ERC1155 id
-    /// @param id id of the ERC1155 to get the synthetic token address for
-    /// @return sERC20 address of the synthetic token for the given ERC1155 id
-    function getSyntheticTokenAddress(uint256 id) external view returns (address sERC20);
+    /// @notice Public getter for the address of the aErc20 token for a given ERC1155 id
+    /// @param id id of the ERC1155 to get the aErc20 token address for
+    /// @return aERC20 address of the aErc20 token for the given ERC1155 id
+    function getERC20TokenAddress(uint256 id) external view returns (address aERC20);
 
     /*//////////////////////////////////////////////////////////////
                                 METADATA 
     //////////////////////////////////////////////////////////////*/
 
     /// @dev Compute return string from baseURI set for this contract and unique vaultId
-    function uri(uint256 superFormId) external view returns (string memory);
+    function uri(uint256 id) external view returns (string memory);
 
     /*//////////////////////////////////////////////////////////////
                             SUPPLY GETTERS 
@@ -148,7 +148,7 @@ interface IERC1155A is IERC1155 {
     /// @dev determines based on total supply for the id
     function exists(uint256 id) external view returns (bool);
 
-    /// @dev handy helper to check if a SERC20 is registered
-    /// @param id of the ERC1155 to check if a synthetic ERC20 exists for
-    function sERC20Exists(uint256 id) external view returns (bool);
+    /// @dev handy helper to check if a AERC20 is registered
+    /// @param id of the ERC1155 to check if a AERC20 exists for
+    function aERC20Exists(uint256 id) external view returns (bool);
 }

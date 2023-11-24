@@ -2,19 +2,19 @@
 pragma solidity ^0.8.23;
 
 import { ERC1155A } from "../../ERC1155A.sol";
-import { sERC20 } from "../../sERC20.sol";
+import { aERC20 } from "../../aERC20.sol";
 import { Strings } from "openzeppelin-contracts/contracts/utils/Strings.sol";
 
 /// @notice For test purpouses we open mint()/burn() functions of ERC1155A
 contract MockERC1155A is ERC1155A {
     /// @dev See ../ERC1155A.sol
-    function uri(uint256 superFormId) public pure override returns (string memory) {
-        return string(abi.encodePacked(_baseURI(), Strings.toString(superFormId)));
+    function uri(uint256 id) public pure override returns (string memory) {
+        return string(abi.encodePacked(_baseURI(), Strings.toString(id)));
     }
 
     /// @dev This is non-upgradeable value after deployment
     function _baseURI() internal pure override returns (string memory) {
-        return "https://api.superform.xyz/superposition/";
+        return "https://uri.com/";
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -37,7 +37,7 @@ contract MockERC1155A is ERC1155A {
         _batchBurn(from, msg.sender, ids, amounts);
     }
 
-    function _registerSERC20(uint256 /*id*/ ) internal virtual override returns (address syntheticToken) {
-        syntheticToken = address(new sERC20("name", "symbol", 18));
+    function _registerAERC20(uint256 /*id*/ ) internal virtual override returns (address aToken) {
+        aToken = address(new aERC20("name", "symbol", 18));
     }
 }
