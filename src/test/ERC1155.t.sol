@@ -489,6 +489,26 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
         token.transmuteToERC1155A(address(0), 1, 100);
     }
 
+    function testFailArrayMismatchIncreaseAllowanceForMany() public {
+        token.increaseAllowanceForMany(address(0xBEEF), new uint256[](1), new uint256[](2));
+    }
+
+    function testFailArrayMismatchSetApprovalForMany() public {
+        token.setApprovalForMany(address(0xBEEF), new uint256[](1), new uint256[](2));
+    }
+
+    function testFailArrayMismatchDecreaseAllowanceForMany() public {
+        token.decreaseAllowanceForMany(address(0xBEEF), new uint256[](1), new uint256[](2));
+    }
+
+    function testFailArrayMismatchTransmuteBatchToERC20() public {
+        token.transmuteBatchToERC20(address(0xBEEF), new uint256[](1), new uint256[](2));
+    }
+
+    function testFailArrayMismatchTransmuteBatchToERC1155A() public {
+        token.transmuteBatchToERC1155A(address(0xBEEF), new uint256[](1), new uint256[](2));
+    }
+
     function testFailMintToNonERC155Recipient() public {
         token.mint(address(new NonERC1155Recipient()), 1337, 1, "");
     }

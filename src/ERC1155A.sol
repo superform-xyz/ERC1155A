@@ -203,7 +203,10 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
     /// inheritdoc IERC1155A
     function setApprovalForMany(address spender, uint256[] memory ids, uint256[] memory amounts) public virtual {
-        for (uint256 i; i < ids.length; ++i) {
+        uint256 idsLength = ids.length;
+        if (idsLength != amounts.length) revert LENGTH_MISMATCH();
+
+        for (uint256 i; i < idsLength; ++i) {
             _setApprovalForOne(msg.sender, spender, ids[i], amounts[i]);
         }
     }
@@ -218,7 +221,10 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         virtual
         returns (bool)
     {
-        for (uint256 i; i < ids.length; ++i) {
+        uint256 idsLength = ids.length;
+        if (idsLength != addedValues.length) revert LENGTH_MISMATCH();
+
+        for (uint256 i; i < idsLength; ++i) {
             _setApprovalForOne(msg.sender, spender, ids[i], allowance(msg.sender, spender, ids[i]) + addedValues[i]);
         }
 
@@ -235,7 +241,10 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         virtual
         returns (bool)
     {
-        for (uint256 i; i < ids.length; ++i) {
+        uint256 idsLength = ids.length;
+        if (idsLength != subtractedValues.length) revert LENGTH_MISMATCH();
+
+        for (uint256 i; i < idsLength; ++i) {
             _decreaseAllowance(msg.sender, spender, ids[i], subtractedValues[i]);
         }
 
@@ -260,10 +269,14 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     /// @inheritdoc IERC1155A
     function transmuteBatchToERC20(address owner, uint256[] memory ids, uint256[] memory amounts) external override {
         if (owner == address(0)) revert ZERO_ADDRESS();
+
+        uint256 idsLength = ids.length; // Saves MLOADs.
+        if (idsLength != amounts.length) revert LENGTH_MISMATCH();
+
         /// @dev an approval is needed to burn
         _batchBurn(owner, msg.sender, ids, amounts);
 
-        for (uint256 i = 0; i < ids.length; ++i) {
+        for (uint256 i = 0; i < idsLength; ++i) {
             address aERC20Token = aErc20TokenId[ids[i]];
             if (aERC20Token == address(0)) revert AERC20_NOT_REGISTERED();
 
@@ -284,7 +297,10 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     {
         if (owner == address(0)) revert ZERO_ADDRESS();
 
-        for (uint256 i = 0; i < ids.length; ++i) {
+        uint256 idsLength = ids.length; // Saves MLOADs.
+        if (idsLength != amounts.length) revert LENGTH_MISMATCH();
+
+        for (uint256 i = 0; i < idsLength; ++i) {
             address aERC20Token = aErc20TokenId[ids[i]];
             if (aERC20Token == address(0)) revert AERC20_NOT_REGISTERED();
             /// @dev an approval is needed on each aERC20 to burn
