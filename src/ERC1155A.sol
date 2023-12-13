@@ -44,7 +44,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
     /// @notice Transfer singleApproved id with this function
     /// @dev If caller is owner of ids, transfer just executes.
-    /// @dev If caller singleApproved > transferAmount, function executes and reduces allowance (even if
+    /// @dev If caller singleApproved >= transferAmount, function executes and reduces allowance (even if
     /// setApproveForAll is true)
     /// @dev If caller singleApproved < transferAmount && isApprovedForAll, function executes without reducing allowance
     /// (full trust assumed)
@@ -74,13 +74,6 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
             _safeTransferFrom(operator, from, to, id, amount, data);
 
             /// @dev operator allowance is higher than requested amount
-        } else if (allowed >= amount) {
-            /// @dev decrease allowance
-            _decreaseAllowance(from, operator, id, amount);
-            /// @dev make transfer
-            _safeTransferFrom(operator, from, to, id, amount, data);
-
-            /// @dev operator is approved for all tokens
         } else if (isApprovedForAll[from][operator]) {
             /// NOTE: We don't decrease individual allowance here.
             /// NOTE: Spender effectively has unlimited allowance because of isApprovedForAll
@@ -90,6 +83,13 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
             _safeTransferFrom(operator, from, to, id, amount, data);
 
             /// @dev operator is not an owner of ids or not enough of allowance, or is not approvedForAll
+        } else if (allowed >= amount) {
+            /// @dev decrease allowance
+            _decreaseAllowance(from, operator, id, amount);
+            /// @dev make transfer
+            _safeTransferFrom(operator, from, to, id, amount, data);
+
+            /// @dev operator is approved for all tokens
         } else {
             revert NOT_AUTHORIZED();
         }
@@ -107,8 +107,6 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     }
 
     /// @dev Implementation copied from solmate/ERC1155
-    /// @dev Ignores single id approvals. Works only with setApprovalForAll.
-    /// @dev Assumption is that BatchTransfers are supposed to be gas-efficient
     function safeBatchTransferFrom(
         address from,
         address to,
@@ -172,13 +170,12 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    ///                     SIGNLE APPROVE SECTION                          ///
+    ///                     SINGLE APPROVE SECTION                          ///
     ///////////////////////////////////////////////////////////////////////////
 
     /// inheritdoc IERC1155A
     function setApprovalForOne(address spender, uint256 id, uint256 amount) public virtual {
-        address owner = msg.sender;
-        _setApprovalForOne(owner, spender, id, amount);
+        _setApprovalForOne(msg.sender, spender, id, amount);
     }
 
     /// inheritdoc IERC1155A
@@ -188,15 +185,13 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
     /// inheritdoc IERC1155A
     function increaseAllowance(address spender, uint256 id, uint256 addedValue) public virtual returns (bool) {
-        address owner = msg.sender;
-        _setApprovalForOne(owner, spender, id, allowance(owner, spender, id) + addedValue);
+        _setApprovalForOne(msg.sender, spender, id, allowance(owner, spender, id) + addedValue);
         return true;
     }
 
     /// inheritdoc IERC1155A
     function decreaseAllowance(address spender, uint256 id, uint256 subtractedValue) public virtual returns (bool) {
-        address owner = msg.sender;
-        return _decreaseAllowance(owner, spender, id, subtractedValue);
+        return _decreaseAllowance(msg.sender, spender, id, subtractedValue);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -205,10 +200,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
     /// inheritdoc IERC1155A
     function setApprovalForMany(address spender, uint256[] memory ids, uint256[] memory amounts) public virtual {
-        address owner = msg.sender;
-
         for (uint256 i; i < ids.length; ++i) {
-            _setApprovalForOne(owner, spender, ids[i], amounts[i]);
+            _setApprovalForOne(msg.sender, spender, ids[i], amounts[i]);
         }
     }
 
@@ -222,11 +215,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         virtual
         returns (bool)
     {
-        address owner = msg.sender;
-        uint256 id;
         for (uint256 i; i < ids.length; ++i) {
-            id = ids[i];
-            _setApprovalForOne(owner, spender, id, allowance(owner, spender, id) + addedValues[i]);
+            _setApprovalForOne(msg.sender, spender, ids[i], allowance(owner, spender, ids[i]) + addedValues[i]);
         }
 
         return true;
@@ -242,10 +232,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         virtual
         returns (bool)
     {
-        address owner = msg.sender;
-
         for (uint256 i; i < ids.length; ++i) {
-            _decreaseAllowance(owner, spender, ids[i], subtractedValues[i]);
+            _decreaseAllowance(msg.sender, spender, ids[i], subtractedValues[i]);
         }
 
         return true;
@@ -483,31 +471,25 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         bool singleApproval;
         uint256 idsLength = ids.length; // Saves MLOADs.
 
-        /// @dev case to handle single id / multi id approvals
         if (operator != from && !isApprovedForAll[from][operator]) {
             singleApproval = true;
         }
 
         if (idsLength != amounts.length) revert LENGTH_MISMATCH();
 
-        uint256 id;
-        uint256 amount;
-
         for (uint256 i = 0; i < idsLength; ++i) {
-            id = ids[i];
-            amount = amounts[i];
-
             if (singleApproval) {
-                if (allowance(from, operator, id) < amount) revert NOT_ENOUGH_ALLOWANCE();
-                allowances[from][operator][id] -= amount;
+                if (allowance(from, operator, ids[i]) < amounts[i]) revert NOT_ENOUGH_ALLOWANCE();
+                allowances[from][operator][ids[i]] -= amounts[i];
             }
 
-            balanceOf[from][id] -= amount;
-            _totalSupply[id] -= amount;
+            balanceOf[from][ids[i]] -= amounts[i];
+            _totalSupply[ids[i]] -= amounts[i];
         }
 
         emit TransferBatch(operator, from, address(0), ids, amounts);
     }
+
 
     /// @dev Implementation copied from solmate/ERC1155 and adapted with operator logic
     function _burn(address from, address operator, uint256 id, uint256 amount) internal virtual {
