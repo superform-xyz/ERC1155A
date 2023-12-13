@@ -185,7 +185,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
     /// inheritdoc IERC1155A
     function increaseAllowance(address spender, uint256 id, uint256 addedValue) public virtual returns (bool) {
-        _setApprovalForOne(msg.sender, spender, id, allowance(owner, spender, id) + addedValue);
+        _setApprovalForOne(msg.sender, spender, id, allowance(msg.sender, spender, id) + addedValue);
         return true;
     }
 
@@ -216,7 +216,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         returns (bool)
     {
         for (uint256 i; i < ids.length; ++i) {
-            _setApprovalForOne(msg.sender, spender, ids[i], allowance(owner, spender, ids[i]) + addedValues[i]);
+            _setApprovalForOne(msg.sender, spender, ids[i], allowance(msg.sender, spender, ids[i]) + addedValues[i]);
         }
 
         return true;
