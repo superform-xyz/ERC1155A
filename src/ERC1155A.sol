@@ -101,6 +101,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
     /// @dev Implementation copied from solmate/ERC1155
     function setApprovalForAll(address operator, bool approved) public virtual {
+        if (operator == address(0)) revert ZERO_ADDRESS();
         isApprovedForAll[msg.sender][operator] = approved;
 
         emit ApprovalForAll(msg.sender, operator, approved);
@@ -118,6 +119,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         virtual
         override
     {
+        if (from == address(0) || to == address(0)) revert ZERO_ADDRESS();
+
         bool singleApproval;
         uint256 len = ids.length;
 
@@ -256,6 +259,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
     /// @inheritdoc IERC1155A
     function transmuteBatchToERC20(address owner, uint256[] memory ids, uint256[] memory amounts) external override {
+        if (owner == address(0)) revert ZERO_ADDRESS();
         /// @dev an approval is needed to burn
         _batchBurn(owner, msg.sender, ids, amounts);
 
@@ -278,6 +282,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         external
         override
     {
+        if (owner == address(0)) revert ZERO_ADDRESS();
+
         for (uint256 i = 0; i < ids.length; ++i) {
             address aERC20Token = aErc20TokenId[ids[i]];
             if (aERC20Token == address(0)) revert AERC20_NOT_REGISTERED();
@@ -292,6 +298,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
     /// @inheritdoc IERC1155A
     function transmuteToERC20(address owner, uint256 id, uint256 amount) external override {
+        if (owner == address(0)) revert ZERO_ADDRESS();
         /// @dev an approval is needed to burn
         _burn(owner, msg.sender, id, amount);
 
@@ -304,12 +311,13 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
     /// @inheritdoc IERC1155A
     function transmuteToERC1155A(address owner, uint256 id, uint256 amount) external override {
+        if (owner == address(0)) revert ZERO_ADDRESS();
+
         address aERC20Token = aErc20TokenId[id];
         if (aERC20Token == address(0)) revert AERC20_NOT_REGISTERED();
 
         /// @dev an approval is needed to burn
         IaERC20(aERC20Token).burn(owner, msg.sender, amount);
-
         _mint(owner, msg.sender, id, amount, bytes(""));
 
         emit TransmutedToERC1155A(owner, id, amount);
@@ -489,7 +497,6 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
         emit TransferBatch(operator, from, address(0), ids, amounts);
     }
-
 
     /// @dev Implementation copied from solmate/ERC1155 and adapted with operator logic
     function _burn(address from, address operator, uint256 id, uint256 amount) internal virtual {

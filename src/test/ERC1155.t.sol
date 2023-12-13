@@ -459,6 +459,36 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
         token.mint(address(0), 1337, 1, "");
     }
 
+    function testFailZeroAddressApprovalForAll() public {
+        /// zero address check on setApprovalForAll
+        token.setApprovalForAll(address(0), true);
+    }
+
+    function testFailZeroAddressSafeBatchTransferFrom() public {
+        /// zero address check on safeBatchTransferFrom
+        token.safeBatchTransferFrom(address(0xBEEF), address(0), new uint256[](1), new uint256[](1), bytes(""));
+    }
+
+    function testFailZeroAddressTransmuteBatchToERC20() public {
+        /// zero address check on transmuteBatchToERC20
+        token.transmuteBatchToERC20(address(0), new uint256[](1), new uint256[](1));
+    }
+
+    function testFailZeroAddressTransmuteBatchToERC1155A() public {
+        /// zero address check on transmuteBatchToERC1155A
+        token.transmuteBatchToERC1155A(address(0), new uint256[](1), new uint256[](1));
+    }
+
+    function testFailZeroAddressTransmuteToERC20() public {
+        /// zero address check on transmuteToERC20
+        token.transmuteToERC20(address(0), 1, 100);
+    }
+
+    function testFailZeroAddressTransmuteToERC1155A() public {
+        /// zero address check on transmuteToERC1155A
+        token.transmuteToERC1155A(address(0), 1, 100);
+    }
+
     function testFailMintToNonERC155Recipient() public {
         token.mint(address(new NonERC1155Recipient()), 1337, 1, "");
     }
