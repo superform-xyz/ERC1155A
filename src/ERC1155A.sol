@@ -138,7 +138,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
             if (singleApproval) {
                 if (allowance(from, msg.sender, id) < amount) revert NOT_ENOUGH_ALLOWANCE();
-                allowances[from][to][id] -= amount;
+                allowances[from][msg.sender][id] -= amount;
             }
 
             balanceOf[from][id] -= amount;
@@ -489,7 +489,6 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
         emit TransferBatch(operator, from, address(0), ids, amounts);
     }
-
 
     /// @dev Implementation copied from solmate/ERC1155 and adapted with operator logic
     function _burn(address from, address operator, uint256 id, uint256 amount) internal virtual {
