@@ -509,6 +509,10 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
         token.transmuteBatchToERC1155A(address(0xBEEF), new uint256[](1), new uint256[](2));
     }
 
+    function testFailSetApprovalToZeroAmount() public {
+        token.setApprovalForOne(address(0xBEEF), 1, 0);
+    }
+
     function testFailMintToNonERC155Recipient() public {
         token.mint(address(new NonERC1155Recipient()), 1337, 1, "");
     }

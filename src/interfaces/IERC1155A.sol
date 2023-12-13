@@ -44,6 +44,10 @@ interface IERC1155A is IERC1155 {
 
     /// @dev forbids registering a saErc20 if no associated erc1155a has been minted yet first
     error ID_NOT_MINTED_YET();
+
+    /// @dev approval amount is 0
+    error ZERO_APPROVAL_AMOUNT();
+
     /*//////////////////////////////////////////////////////////////
                               SINGLE APPROVE
     //////////////////////////////////////////////////////////////*/
