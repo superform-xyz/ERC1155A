@@ -215,8 +215,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     /// inheritdoc IERC1155A
     function increaseAllowanceForMany(
         address spender,
-        uint256[] memory ids,
-        uint256[] memory addedValues
+        uint256[] calldata ids,
+        uint256[] calldata addedValues
     )
         public
         virtual
@@ -232,8 +232,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     /// inheritdoc IERC1155A
     function decreaseAllowanceForMany(
         address spender,
-        uint256[] memory ids,
-        uint256[] memory subtractedValues
+        uint256[] calldata ids,
+        uint256[] calldata subtractedValues
     )
         public
         virtual
@@ -262,7 +262,14 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     }
 
     /// @inheritdoc IERC1155A
-    function transmuteBatchToERC20(address owner, uint256[] memory ids, uint256[] memory amounts) external override {
+    function transmuteBatchToERC20(
+        address owner,
+        uint256[] calldata ids,
+        uint256[] calldata amounts
+    )
+        external
+        override
+    {
         /// @dev an approval is needed to burn
         _batchBurn(owner, msg.sender, ids, amounts);
 
@@ -279,8 +286,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     /// @inheritdoc IERC1155A
     function transmuteBatchToERC1155A(
         address owner,
-        uint256[] memory ids,
-        uint256[] memory amounts
+        uint256[] calldata ids,
+        uint256[] calldata amounts
     )
         external
         override
@@ -444,8 +451,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     function _batchMint(
         address to,
         address operator,
-        uint256[] memory ids,
-        uint256[] memory amounts,
+        uint256[] calldata ids,
+        uint256[] calldata amounts,
         bytes memory data
     )
         internal
@@ -469,8 +476,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     function _batchBurn(
         address from,
         address operator,
-        uint256[] memory ids,
-        uint256[] memory amounts
+        uint256[] calldata ids,
+        uint256[] calldata amounts
     )
         internal
         virtual
