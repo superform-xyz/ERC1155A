@@ -291,11 +291,17 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         external
         override
     {
-        for (uint256 i = 0; i < ids.length; ++i) {
-            address aERC20Token = aErc20TokenId[ids[i]];
+        uint256 id;
+        uint256 amount;
+
+        for (uint256 i; i < ids.length; ++i) {
+            id = ids[i];
+            amount = amounts[i];
+
+            address aERC20Token = aErc20TokenId[id];
             if (aERC20Token == address(0)) revert AERC20_NOT_REGISTERED();
             /// @dev an approval is needed on each aERC20 to burn
-            IaERC20(aERC20Token).burn(owner, msg.sender, amounts[i]);
+            IaERC20(aERC20Token).burn(owner, msg.sender, amount);
         }
 
         _batchMint(owner, msg.sender, ids, amounts, bytes(""));
