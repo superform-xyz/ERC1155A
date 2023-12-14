@@ -519,10 +519,6 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
         token.transmuteBatchToERC1155A(address(0xBEEF), new uint256[](1), new uint256[](2));
     }
 
-    function testFailSetApprovalToZeroAmount() public {
-        token.setApprovalForOne(address(0xBEEF), 1, 0);
-    }
-
     function testFailMintToNonERC155Recipient() public {
         token.mint(address(new NonERC1155Recipient()), 1337, 1, "");
     }
@@ -1037,15 +1033,7 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
         }
     }
 
-    function testBabaBurn(
-        address to,
-        uint256 id,
-        uint256 mintAmount,
-        bytes memory mintData,
-        uint256 burnAmount
-    )
-        public
-    {
+    function testBurn(address to, uint256 id, uint256 mintAmount, bytes memory mintData, uint256 burnAmount) public {
         if (to == address(0)) to = address(0xBEEF);
         if (mintAmount < 2 || burnAmount == 0 || id == 0) return;
         if (uint256(uint160(to)) <= 18 || to.code.length > 0) return;

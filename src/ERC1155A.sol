@@ -438,7 +438,6 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     function _setApprovalForOne(address owner, address operator, uint256 id, uint256 amount) internal virtual {
         if (owner == address(0)) revert ZERO_ADDRESS();
         if (operator == address(0)) revert ZERO_ADDRESS();
-        if (amount == 0) revert ZERO_APPROVAL_AMOUNT();
 
         allowances[owner][operator][id] = amount;
         emit ApprovalForOne(owner, operator, id, amount);
