@@ -134,26 +134,23 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
         uint256 id;
         uint256 amount;
+        address operator = msg.sender;
+
         /// @dev case to handle single id / multi id approvals
-        if (msg.sender != from && !isApprovedForAll[from][msg.sender]) {
+        if (operator != from && !isApprovedForAll[from][operator]) {
             for (uint256 i; i < len; ++i) {
                 id = ids[i];
                 amount = amounts[i];
 
-                if (allowance(from, msg.sender, id) < amount) revert NOT_ENOUGH_ALLOWANCE();
-                allowances[from][msg.sender][id] -= amount;
-            }
-
-                balanceOf[from][id] -= amount;
-                balanceOf[to][id] += amount;
+                _decreaseAllowance(from, operator, id, amount);
+                _safeTransferFrom(operator, from, to, id, amount, data);
             }
         } else {
             for (uint256 i; i < len; ++i) {
                 id = ids[i];
                 amount = amounts[i];
 
-                balanceOf[from][id] -= amount;
-                balanceOf[to][id] += amount;
+                _safeTransferFrom(operator, from, to, id, amount, data);
             }
         }
 
