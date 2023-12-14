@@ -459,6 +459,16 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
         token.mint(address(0), 1337, 1, "");
     }
 
+    function testFailZeroAddressSafeTransferFrom1() public {
+        /// zero address check on safeTransferFrom
+        token.safeTransferFrom(address(0), address(0xBEEF), 1, 100, bytes(""));
+    }
+
+    function testFailZeroAddressSafeTransferFrom2() public {
+        /// zero address check on safeTransferFrom
+        token.safeTransferFrom(address(0xBEEF), address(0), 1, 100, bytes(""));
+    }
+
     function testFailZeroAddressApprovalForAll() public {
         /// zero address check on setApprovalForAll
         token.setApprovalForAll(address(0), true);
@@ -1027,12 +1037,20 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
         }
     }
 
-    function testBurn(address to, uint256 id, uint256 mintAmount, bytes memory mintData, uint256 burnAmount) public {
+    function testBabaBurn(
+        address to,
+        uint256 id,
+        uint256 mintAmount,
+        bytes memory mintData,
+        uint256 burnAmount
+    )
+        public
+    {
         if (to == address(0)) to = address(0xBEEF);
-
+        if (mintAmount < 2 || burnAmount == 0 || id == 0) return;
         if (uint256(uint160(to)) <= 18 || to.code.length > 0) return;
 
-        burnAmount = bound(burnAmount, 0, mintAmount);
+        burnAmount = bound(burnAmount, 1, mintAmount);
 
         token.mint(to, id, mintAmount, mintData);
 

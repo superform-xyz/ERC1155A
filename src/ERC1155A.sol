@@ -61,6 +61,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         virtual
         override
     {
+        if (from == address(0) || to == address(0)) revert ZERO_ADDRESS();
+
         address operator = msg.sender;
         uint256 allowed = allowances[from][operator][id];
 
