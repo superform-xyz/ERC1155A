@@ -125,7 +125,6 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         override
     {
         uint256 len = ids.length;
-
         if (len != amounts.length) revert LENGTH_MISMATCH();
 
         uint256 id;
@@ -482,23 +481,31 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         internal
         virtual
     {
-        bool singleApproval;
         uint256 idsLength = ids.length; // Saves MLOADs.
-
-        if (operator != from && !isApprovedForAll[from][operator]) {
-            singleApproval = true;
-        }
-
         if (idsLength != amounts.length) revert LENGTH_MISMATCH();
 
-        for (uint256 i = 0; i < idsLength; ++i) {
-            if (singleApproval) {
-                if (allowance(from, operator, ids[i]) < amounts[i]) revert NOT_ENOUGH_ALLOWANCE();
-                allowances[from][operator][ids[i]] -= amounts[i];
-            }
+        uint256 id;
+        uint256 amount;
+        /// @dev case to handle single id / multi id approvals
+        if (operator != from && !isApprovedForAll[from][operator]) {
+            for (uint256 i; i < idsLength; ++i) {
+                id = ids[i];
+                amount = amounts[i];
 
-            balanceOf[from][ids[i]] -= amounts[i];
-            _totalSupply[ids[i]] -= amounts[i];
+                if (allowance(from, operator, id) < amount) revert NOT_ENOUGH_ALLOWANCE();
+                allowances[from][operator][ids[i]] -= amounts[i];
+
+                balanceOf[from][ids[i]] -= amounts[i];
+                _totalSupply[ids[i]] -= amounts[i];
+            }
+        } else {
+            for (uint256 i; i < idsLength; ++i) {
+                id = ids[i];
+                amount = amounts[i];
+
+                balanceOf[from][ids[i]] -= amounts[i];
+                _totalSupply[ids[i]] -= amounts[i];
+            }
         }
 
         emit TransferBatch(operator, from, address(0), ids, amounts);
