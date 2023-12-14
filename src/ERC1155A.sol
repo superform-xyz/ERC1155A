@@ -353,7 +353,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
     /// @notice See {IERC1155A-exists}
     function exists(uint256 id) external view virtual returns (bool) {
-        return _totalSupply[id] > 0;
+        return _totalSupply[id] != 0;
     }
 
     /// @dev handy helper to check if a AERC20 is registered
@@ -546,7 +546,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     )
         private
     {
-        if (to.code.length > 0) {
+        if (to.code.length != 0) {
             try IERC1155Receiver(to).onERC1155Received(operator, from, id, value, data) returns (bytes4 response) {
                 if (response != IERC1155Receiver.onERC1155Received.selector) {
                     // Tokens rejected
@@ -580,7 +580,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     )
         private
     {
-        if (to.code.length > 0) {
+        if (to.code.length != 0) {
             try IERC1155Receiver(to).onERC1155BatchReceived(operator, from, ids, values, data) returns (bytes4 response)
             {
                 if (response != IERC1155Receiver.onERC1155BatchReceived.selector) {
