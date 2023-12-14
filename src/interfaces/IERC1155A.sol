@@ -10,10 +10,10 @@ interface IERC1155A is IERC1155 {
 
     /// @notice Event emitted when single id approval is set
     event ApprovalForOne(address indexed owner, address indexed spender, uint256 id, uint256 amount);
-    event TransmutedBatchToERC20(address user, uint256[] ids, uint256[] amounts);
-    event TransmutedBatchToERC1155A(address user, uint256[] ids, uint256[] amounts);
-    event TransmutedToERC20(address user, uint256 id, uint256 amount);
-    event TransmutedToERC1155A(address user, uint256 id, uint256 amount);
+    event TransmutedBatchToERC20(address indexed user, uint256[] ids, uint256[] amounts);
+    event TransmutedBatchToERC1155A(address indexed user, uint256[] ids, uint256[] amounts);
+    event TransmutedToERC20(address indexed user, uint256 id, uint256 amount);
+    event TransmutedToERC1155A(address indexed user, uint256 id, uint256 amount);
 
     /*//////////////////////////////////////////////////////////////
                                  ERRORS
