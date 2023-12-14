@@ -1,10 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import { IERC1155A } from "./interfaces/IERC1155A.sol";
+/// library imports
 import { Strings } from "openzeppelin-contracts/contracts/utils/Strings.sol";
+import { IERC165 } from "openzeppelin-contracts/contracts/interfaces/IERC165.sol";
+import { IERC1155 } from "openzeppelin-contracts/contracts/interfaces/IERC1155.sol";
+import { IERC1155MetadataURI } from "openzeppelin-contracts/contracts/interfaces/IERC1155MetadataURI.sol";
 import { IERC1155Errors } from "openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
 import { IERC1155Receiver } from "openzeppelin-contracts/contracts/token/ERC1155/IERC1155Receiver.sol";
+
+/// local imports
+import { IERC1155A } from "./interfaces/IERC1155A.sol";
 import { IaERC20 } from "./interfaces/IaERC20.sol";
 
 /**
@@ -118,31 +124,31 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         virtual
         override
     {
-        bool singleApproval;
         uint256 len = ids.length;
-
         if (len != amounts.length) revert LENGTH_MISMATCH();
 
-        /// @dev case to handle single id / multi id approvals
-        if (msg.sender != from && !isApprovedForAll[from][msg.sender]) {
-            singleApproval = true;
-        }
-
-        // Storing these outside the loop saves ~15 gas per iteration.
         uint256 id;
         uint256 amount;
+        /// @dev case to handle single id / multi id approvals
+        if (msg.sender != from && !isApprovedForAll[from][msg.sender]) {
+            for (uint256 i; i < len; ++i) {
+                id = ids[i];
+                amount = amounts[i];
 
-        for (uint256 i; i < len; ++i) {
-            id = ids[i];
-            amount = amounts[i];
-
-            if (singleApproval) {
                 if (allowance(from, msg.sender, id) < amount) revert NOT_ENOUGH_ALLOWANCE();
                 allowances[from][to][id] -= amount;
-            }
 
-            balanceOf[from][id] -= amount;
-            balanceOf[to][id] += amount;
+                balanceOf[from][id] -= amount;
+                balanceOf[to][id] += amount;
+            }
+        } else {
+            for (uint256 i; i < len; ++i) {
+                id = ids[i];
+                amount = amounts[i];
+
+                balanceOf[from][id] -= amount;
+                balanceOf[to][id] += amount;
+            }
         }
 
         emit TransferBatch(msg.sender, from, to, ids, amounts);
@@ -208,8 +214,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     /// inheritdoc IERC1155A
     function increaseAllowanceForMany(
         address spender,
-        uint256[] memory ids,
-        uint256[] memory addedValues
+        uint256[] calldata ids,
+        uint256[] calldata addedValues
     )
         public
         virtual
@@ -225,8 +231,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     /// inheritdoc IERC1155A
     function decreaseAllowanceForMany(
         address spender,
-        uint256[] memory ids,
-        uint256[] memory subtractedValues
+        uint256[] calldata ids,
+        uint256[] calldata subtractedValues
     )
         public
         virtual
@@ -255,7 +261,14 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     }
 
     /// @inheritdoc IERC1155A
-    function transmuteBatchToERC20(address owner, uint256[] memory ids, uint256[] memory amounts) external override {
+    function transmuteBatchToERC20(
+        address owner,
+        uint256[] calldata ids,
+        uint256[] calldata amounts
+    )
+        external
+        override
+    {
         /// @dev an approval is needed to burn
         _batchBurn(owner, msg.sender, ids, amounts);
 
@@ -272,17 +285,23 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     /// @inheritdoc IERC1155A
     function transmuteBatchToERC1155A(
         address owner,
-        uint256[] memory ids,
-        uint256[] memory amounts
+        uint256[] calldata ids,
+        uint256[] calldata amounts
     )
         external
         override
     {
-        for (uint256 i = 0; i < ids.length; ++i) {
-            address aERC20Token = aErc20TokenId[ids[i]];
+        uint256 id;
+        uint256 amount;
+
+        for (uint256 i; i < ids.length; ++i) {
+            id = ids[i];
+            amount = amounts[i];
+
+            address aERC20Token = aErc20TokenId[id];
             if (aERC20Token == address(0)) revert AERC20_NOT_REGISTERED();
             /// @dev an approval is needed on each aERC20 to burn
-            IaERC20(aERC20Token).burn(owner, msg.sender, amounts[i]);
+            IaERC20(aERC20Token).burn(owner, msg.sender, amount);
         }
 
         _batchMint(owner, msg.sender, ids, amounts, bytes(""));
@@ -340,7 +359,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
     /// @notice See {IERC1155A-exists}
     function exists(uint256 id) external view virtual returns (bool) {
-        return _totalSupply[id] > 0;
+        return _totalSupply[id] != 0;
     }
 
     /// @dev handy helper to check if a AERC20 is registered
@@ -354,9 +373,9 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
     /// @dev Implementation copied from solmate/ERC1155
     function supportsInterface(bytes4 interfaceId) public view virtual returns (bool) {
-        return interfaceId == 0x01ffc9a7 // ERC165 Interface ID for ERC165
-            || interfaceId == 0xd9b67a26 // ERC165 Interface ID for ERC1155
-            || interfaceId == 0x0e89341c; // ERC165 Interface ID for ERC1155MetadataURI
+        return interfaceId == type(IERC165).interfaceId // ERC165 Interface ID for ERC165
+            || interfaceId == type(IERC1155).interfaceId // ERC165 Interface ID for ERC1155
+            || interfaceId == type(IERC1155MetadataURI).interfaceId; // ERC165 Interface ID for ERC1155MetadataURI
     }
 
     /*///////////////////////////////////////////////////////////////
@@ -437,20 +456,24 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     function _batchMint(
         address to,
         address operator,
-        uint256[] memory ids,
-        uint256[] memory amounts,
+        uint256[] calldata ids,
+        uint256[] calldata amounts,
         bytes memory data
     )
         internal
         virtual
     {
         uint256 idsLength = ids.length; // Saves MLOADs.
-
         if (idsLength != amounts.length) revert LENGTH_MISMATCH();
 
-        for (uint256 i = 0; i < idsLength; ++i) {
-            balanceOf[to][ids[i]] += amounts[i];
-            _totalSupply[ids[i]] += amounts[i];
+        uint256 id;
+        uint256 amount;
+        for (uint256 i; i < idsLength; ++i) {
+            id = ids[i];
+            amount = amounts[i];
+
+            balanceOf[to][id] += amount;
+            _totalSupply[id] += amount;
         }
 
         emit TransferBatch(operator, address(0), to, ids, amounts);
@@ -462,34 +485,41 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     function _batchBurn(
         address from,
         address operator,
-        uint256[] memory ids,
-        uint256[] memory amounts
+        uint256[] calldata ids,
+        uint256[] calldata amounts
     )
         internal
         virtual
     {
-        bool singleApproval;
         uint256 idsLength = ids.length; // Saves MLOADs.
-
-        if (operator != from && !isApprovedForAll[from][operator]) {
-            singleApproval = true;
-        }
-
         if (idsLength != amounts.length) revert LENGTH_MISMATCH();
 
-        for (uint256 i = 0; i < idsLength; ++i) {
-            if (singleApproval) {
-                if (allowance(from, operator, ids[i]) < amounts[i]) revert NOT_ENOUGH_ALLOWANCE();
-                allowances[from][operator][ids[i]] -= amounts[i];
-            }
+        uint256 id;
+        uint256 amount;
+        /// @dev case to handle single id / multi id approvals
+        if (operator != from && !isApprovedForAll[from][operator]) {
+            for (uint256 i; i < idsLength; ++i) {
+                id = ids[i];
+                amount = amounts[i];
 
-            balanceOf[from][ids[i]] -= amounts[i];
-            _totalSupply[ids[i]] -= amounts[i];
+                if (allowance(from, operator, id) < amount) revert NOT_ENOUGH_ALLOWANCE();
+                allowances[from][operator][ids[i]] -= amounts[i];
+
+                balanceOf[from][ids[i]] -= amounts[i];
+                _totalSupply[ids[i]] -= amounts[i];
+            }
+        } else {
+            for (uint256 i; i < idsLength; ++i) {
+                id = ids[i];
+                amount = amounts[i];
+
+                balanceOf[from][ids[i]] -= amounts[i];
+                _totalSupply[ids[i]] -= amounts[i];
+            }
         }
 
         emit TransferBatch(operator, from, address(0), ids, amounts);
     }
-
 
     /// @dev Implementation copied from solmate/ERC1155 and adapted with operator logic
     function _burn(address from, address operator, uint256 id, uint256 amount) internal virtual {
@@ -522,7 +552,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     )
         private
     {
-        if (to.code.length > 0) {
+        if (to.code.length != 0) {
             try IERC1155Receiver(to).onERC1155Received(operator, from, id, value, data) returns (bytes4 response) {
                 if (response != IERC1155Receiver.onERC1155Received.selector) {
                     // Tokens rejected
@@ -556,7 +586,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     )
         private
     {
-        if (to.code.length > 0) {
+        if (to.code.length != 0) {
             try IERC1155Receiver(to).onERC1155BatchReceived(operator, from, ids, values, data) returns (bytes4 response)
             {
                 if (response != IERC1155Receiver.onERC1155BatchReceived.selector) {
