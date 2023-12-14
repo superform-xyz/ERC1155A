@@ -458,12 +458,16 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         virtual
     {
         uint256 idsLength = ids.length; // Saves MLOADs.
-
         if (idsLength != amounts.length) revert LENGTH_MISMATCH();
 
-        for (uint256 i = 0; i < idsLength; ++i) {
-            balanceOf[to][ids[i]] += amounts[i];
-            _totalSupply[ids[i]] += amounts[i];
+        uint256 id;
+        uint256 amount;
+        for (uint256 i; i < idsLength; ++i) {
+            id = ids[i];
+            amount = amounts[i];
+
+            balanceOf[to][id] += amount;
+            _totalSupply[id] += amount;
         }
 
         emit TransferBatch(operator, address(0), to, ids, amounts);
