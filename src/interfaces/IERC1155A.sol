@@ -100,7 +100,6 @@ interface IERC1155A is IERC1155 {
                     AERC20 AND TRANSMUTE LOGIC 
     //////////////////////////////////////////////////////////////*/
 
-    /// @dev Function set to virtual so that implementing protocols may introduce RBAC here or perform other changes
     /// @notice payable to allow any implementing cross-chain protocol to be paid for fees for relaying this action to
     /// various chain
     /// @param id of the ERC1155 to create a ERC20 for
