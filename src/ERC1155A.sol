@@ -304,7 +304,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
             IaERC20(aERC20Token).burn(owner, msg.sender, amount);
         }
 
-        _batchMint(owner, msg.sender, ids, amounts, bytes(""));
+        _batchMint(owner, msg.sender, ids, amounts, EMPTY_BYTES);
 
         emit TransmutedBatchToERC1155A(owner, ids, amounts);
     }
