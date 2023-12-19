@@ -162,7 +162,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
     /// inheritdoc IERC1155A
     function setApprovalForOne(address operator, uint256 id, uint256 amount) public virtual {
-        _increaseAllowance(msg.sender, operator, id, amount);
+        _setAllowance(msg.sender, operator, id, amount);
     }
 
     /// inheritdoc IERC1155A
@@ -172,7 +172,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
     /// inheritdoc IERC1155A
     function increaseAllowance(address operator, uint256 id, uint256 addedValue) public virtual returns (bool) {
-        _increaseAllowance(msg.sender, operator, id, allowance(msg.sender, operator, id) + addedValue);
+        _setAllowance(msg.sender, operator, id, allowance(msg.sender, operator, id) + addedValue);
         return true;
     }
 
@@ -191,7 +191,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         if (idsLength != amounts.length) revert LENGTH_MISMATCH();
 
         for (uint256 i; i < idsLength; ++i) {
-            _increaseAllowance(msg.sender, operator, ids[i], amounts[i]);
+            _setAllowance(msg.sender, operator, ids[i], amounts[i]);
         }
     }
 
@@ -209,7 +209,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         if (idsLength != addedValues.length) revert LENGTH_MISMATCH();
 
         for (uint256 i; i < idsLength; ++i) {
-            _increaseAllowance(msg.sender, operator, ids[i], allowance(msg.sender, operator, ids[i]) + addedValues[i]);
+            _setAllowance(msg.sender, operator, ids[i], allowance(msg.sender, operator, ids[i]) + addedValues[i]);
         }
 
         return true;
@@ -422,7 +422,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     {
         uint256 currentAllowance = allowance(owner, operator, id);
         if (currentAllowance < subtractedValue) revert DECREASED_ALLOWANCE_BELOW_ZERO();
-        _increaseAllowance(owner, operator, id, currentAllowance - subtractedValue);
+        _setAllowance(owner, operator, id, currentAllowance - subtractedValue);
 
         return true;
     }
@@ -430,7 +430,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     /// @notice Internal function for setting single id approval
     /// @dev Used for fine-grained control over approvals with increase/decrease allowance
     /// @dev Notice `owner` param, only contract functions should be able to define it
-    function _increaseAllowance(address owner, address operator, uint256 id, uint256 amount) internal virtual {
+    function _setAllowance(address owner, address operator, uint256 id, uint256 amount) internal virtual {
         if (owner == address(0)) revert ZERO_ADDRESS();
         if (operator == address(0)) revert ZERO_ADDRESS();
 
