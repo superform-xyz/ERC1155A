@@ -76,12 +76,13 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         /// @dev message sender is not from and is not approved for all
         if (from != operator && !isApprovedForAll[from][operator]) {
             _decreaseAllowance(from, operator, id, amount);
-            _safeTransferFrom(operator, from, to, id, amount);
+            _safeTransferFrom(from, to, id, amount);
         } else {
             /// @dev message sender is from || is approved for all
-            _safeTransferFrom(operator, from, to, id, amount);
+            _safeTransferFrom(from, to, id, amount);
         }
 
+        emit TransferSingle(operator, from, to, id, amount);
         _doSafeTransferAcceptanceCheck(operator, from, to, id, amount, data);
     }
 
@@ -126,16 +127,15 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
                 amount = amounts[i];
 
                 _decreaseAllowance(from, operator, id, amount);
-                _safeTransferFrom(operator, from, to, id, amount);
+                _safeTransferFrom(from, to, id, amount);
             }
         } else {
             for (uint256 i; i < len; ++i) {
-                _safeTransferFrom(operator, from, to, ids[i], amounts[i]);
+                _safeTransferFrom(from, to, ids[i], amounts[i]);
             }
         }
 
         emit TransferBatch(operator, from, to, ids, amounts);
-
         _doSafeBatchTransferAcceptanceCheck(operator, from, to, ids, amounts, data);
     }
 
@@ -389,20 +389,9 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     /// @notice Internal safeTranferFrom function called after all checks from the public function are done
     /// @dev Notice `operator` param. It's msg.sender to the safeTransferFrom function. Function is specific to
     /// @dev singleId approve logic.
-    function _safeTransferFrom(
-        address operator,
-        address from,
-        address to,
-        uint256 id,
-        uint256 amount
-    )
-        internal
-        virtual
-    {
+    function _safeTransferFrom(address from, address to, uint256 id, uint256 amount) internal virtual {
         balanceOf[from][id] -= amount;
         balanceOf[to][id] += amount;
-
-        emit TransferSingle(operator, from, to, id, amount);
     }
 
     /// @notice Internal function for decreasing single id approval amount
@@ -503,7 +492,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
                 amount = amounts[i];
 
                 _decreaseAllowance(from, operator, id, amount);
-                _safeTransferFrom(operator, from, address(0), id, amount);
+                _safeTransferFrom(from, address(0), id, amount);
                 _totalSupply[ids[i]] -= amounts[i];
             }
         } else {
@@ -511,7 +500,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
                 id = ids[i];
                 amount = amounts[i];
 
-                _safeTransferFrom(operator, from, address(0), id, amount);
+                _safeTransferFrom(from, address(0), id, amount);
                 _totalSupply[ids[i]] -= amounts[i];
             }
         }
@@ -527,8 +516,10 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         }
 
         // Update the balances and total supply
-        _safeTransferFrom(operator, from, address(0), id, amount);
+        _safeTransferFrom(from, address(0), id, amount);
         _totalSupply[id] -= amount;
+
+        emit TransferSingle(operator, from, address(0), id, amount);
     }
 
     /// @dev allows a developer to integrate their logic to create an aERC20
