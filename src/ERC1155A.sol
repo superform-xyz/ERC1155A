@@ -75,7 +75,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
         /// @dev message sender is not from and is not approved for all
         if (from != operator && !isApprovedForAll[from][operator]) {
-            _decreaseAllowance(from, operator, id, amount);
+            _decreaseAllowance(from, operator, id, amount, false);
             _safeTransferFrom(from, to, id, amount);
         } else {
             /// @dev message sender is from || is approved for all
@@ -126,7 +126,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
                 id = ids[i];
                 amount = amounts[i];
 
-                _decreaseAllowance(from, operator, id, amount);
+                _decreaseAllowance(from, operator, id, amount, false);
                 _safeTransferFrom(from, to, id, amount);
             }
         } else {
@@ -180,7 +180,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
     /// inheritdoc IERC1155A
     function decreaseAllowance(address operator, uint256 id, uint256 subtractedValue) public virtual returns (bool) {
-        return _decreaseAllowance(msg.sender, operator, id, subtractedValue);
+        return _decreaseAllowance(msg.sender, operator, id, subtractedValue, true);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -231,7 +231,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         if (idsLength != subtractedValues.length) revert LENGTH_MISMATCH();
 
         for (uint256 i; i < idsLength; ++i) {
-            _decreaseAllowance(msg.sender, operator, ids[i], subtractedValues[i]);
+            _decreaseAllowance(msg.sender, operator, ids[i], subtractedValues[i], true);
         }
 
         return true;
@@ -402,7 +402,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         address owner,
         address operator,
         uint256 id,
-        uint256 subtractedValue
+        uint256 subtractedValue,
+        bool emitEvent
     )
         internal
         virtual
@@ -410,7 +411,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     {
         uint256 currentAllowance = allowance(owner, operator, id);
         if (currentAllowance < subtractedValue) revert DECREASED_ALLOWANCE_BELOW_ZERO();
-        _setAllowance(owner, operator, id, currentAllowance - subtractedValue, false);
+        _setAllowance(owner, operator, id, currentAllowance - subtractedValue, emitEvent);
 
         return true;
     }
@@ -503,7 +504,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
                 id = ids[i];
                 amount = amounts[i];
 
-                _decreaseAllowance(from, operator, id, amount);
+                _decreaseAllowance(from, operator, id, amount, false);
                 _safeTransferFrom(from, address(0), id, amount);
                 _totalSupply[ids[i]] -= amounts[i];
             }
@@ -524,7 +525,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     function _burn(address from, address operator, uint256 id, uint256 amount) internal virtual {
         // Check if the msg.sender is the owner or is approved for all tokens
         if (operator != from && !isApprovedForAll[from][operator]) {
-            _decreaseAllowance(from, operator, id, amount);
+            _decreaseAllowance(from, operator, id, amount, false);
         }
 
         // Update the balances and total supply
