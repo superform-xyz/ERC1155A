@@ -81,6 +81,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
             /// @dev message sender is from || is approved for all
             _safeTransferFrom(operator, from, to, id, amount, data);
         }
+
+        _doSafeTransferAcceptanceCheck(operator, from, to, id, amount, data);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -402,8 +404,6 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         balanceOf[to][id] += amount;
 
         emit TransferSingle(operator, from, to, id, amount);
-
-        _doSafeTransferAcceptanceCheck(operator, from, to, id, amount, data);
     }
 
     /// @notice Internal function for decreasing single id approval amount
@@ -506,7 +506,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
                 amount = amounts[i];
 
                 _decreaseAllowance(from, operator, id, amount);
-                _safeTransferFrom(operator, from, address(0xDEAD), id, amount, EMPTY_BYTES);
+                _safeTransferFrom(operator, from, address(0), id, amount, EMPTY_BYTES);
                 _totalSupply[ids[i]] -= amounts[i];
             }
         } else {
@@ -514,7 +514,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
                 id = ids[i];
                 amount = amounts[i];
 
-                _safeTransferFrom(operator, from, address(0xDEAD), id, amount, EMPTY_BYTES);
+                _safeTransferFrom(operator, from, address(0), id, amount, EMPTY_BYTES);
                 _totalSupply[ids[i]] -= amounts[i];
             }
         }
@@ -530,7 +530,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         }
 
         // Update the balances and total supply
-        _safeTransferFrom(operator, from, address(0xDEAD), id, amount, EMPTY_BYTES);
+        _safeTransferFrom(operator, from, address(0), id, amount, EMPTY_BYTES);
         _totalSupply[id] -= amount;
     }
 
