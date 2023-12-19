@@ -451,7 +451,6 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         _totalSupply[id] += amount;
 
         emit TransferSingle(operator, address(0), to, id, amount);
-
         _doSafeTransferAcceptanceCheck(operator, address(0), to, id, amount, data);
     }
 
@@ -480,7 +479,6 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         }
 
         emit TransferBatch(operator, address(0), to, ids, amounts);
-
         _doSafeBatchTransferAcceptanceCheck(operator, address(0), to, ids, amounts, data);
     }
 
