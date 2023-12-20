@@ -11,8 +11,6 @@ contract aERC20 is ERC20, IaERC20 {
     address public immutable ERC1155A;
     uint8 private immutable tokenDecimals;
 
-    error ONLY_ERC1155A();
-
     modifier onlyTokenSplitter() {
         if (msg.sender != ERC1155A) {
             revert ONLY_ERC1155A();

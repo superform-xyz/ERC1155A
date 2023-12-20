@@ -5,8 +5,11 @@ import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol"
 
 /// @title aERC20
 /// @author Zeropoint Labs.
-/// @dev ERC20 tokens out of 1155a
+/// @dev ERC20 tokens out of 1155A
 interface IaERC20 is IERC20 {
+
+    error ONLY_ERC1155A();
+
     /// @dev allows msg.sender set in constructor to mint
     /// @param owner address of the owner of the tokens
     /// @param amount amount of tokens to mint
