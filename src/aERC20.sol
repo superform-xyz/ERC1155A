@@ -38,7 +38,7 @@ contract aERC20 is ERC20, IaERC20 {
     }
 
     /// inheritdoc IaERC20
-    function decimals() public view virtual override returns (uint8) {
+    function decimals() public view override returns (uint8) {
         return tokenDecimals;
     }
 }

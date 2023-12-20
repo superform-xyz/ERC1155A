@@ -26,6 +26,8 @@ import { IaERC20 } from "./interfaces/IaERC20.sol";
  *
  */
 abstract contract ERC1155A is IERC1155A, IERC1155Errors {
+    bytes private constant EMPTY_BYTES = bytes("");
+
     /*//////////////////////////////////////////////////////////////
                              ERC1155a STORAGE
     //////////////////////////////////////////////////////////////*/
@@ -70,37 +72,18 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         if (from == address(0) || to == address(0)) revert ZERO_ADDRESS();
 
         address operator = msg.sender;
-        uint256 allowed = allowances[from][operator][id];
 
-        /// NOTE: This function order makes it more costly to use isApprovedForAll but cheaper to user single approval
-        /// and owner transfer
-
-        /// @dev operator is an owner of ids
-        if (operator == from) {
-            /// @dev no need to self-approve
-            /// @dev make transfer
-            _safeTransferFrom(operator, from, to, id, amount, data);
-
-            /// @dev operator allowance is higher than requested amount
-        } else if (isApprovedForAll[from][operator]) {
-            /// NOTE: We don't decrease individual allowance here.
-            /// NOTE: Spender effectively has unlimited allowance because of isApprovedForAll
-            /// NOTE: We leave allowance management to token owners
-
-            /// @dev make transfer
-            _safeTransferFrom(operator, from, to, id, amount, data);
-
-            /// @dev operator is not an owner of ids or not enough of allowance, or is not approvedForAll
-        } else if (allowed >= amount) {
-            /// @dev decrease allowance
-            _decreaseAllowance(from, operator, id, amount);
-            /// @dev make transfer
-            _safeTransferFrom(operator, from, to, id, amount, data);
-
-            /// @dev operator is approved for all tokens
+        /// @dev message sender is not from and is not approved for all
+        if (from != operator && !isApprovedForAll[from][operator]) {
+            _decreaseAllowance(from, operator, id, amount, false);
+            _safeTransferFrom(from, to, id, amount);
         } else {
-            revert NOT_AUTHORIZED();
+            /// @dev message sender is from || is approved for all
+            _safeTransferFrom(from, to, id, amount);
         }
+
+        emit TransferSingle(operator, from, to, id, amount);
+        _doSafeTransferAcceptanceCheck(operator, from, to, id, amount, data);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -132,33 +115,28 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         uint256 len = ids.length;
         if (len != amounts.length) revert LENGTH_MISMATCH();
 
-        uint256 id;
-        uint256 amount;
+        address operator = msg.sender;
+
         /// @dev case to handle single id / multi id approvals
-        if (msg.sender != from && !isApprovedForAll[from][msg.sender]) {
+        if (operator != from && !isApprovedForAll[from][operator]) {
+            uint256 id;
+            uint256 amount;
+
             for (uint256 i; i < len; ++i) {
                 id = ids[i];
                 amount = amounts[i];
 
-                if (allowance(from, msg.sender, id) < amount) revert NOT_ENOUGH_ALLOWANCE();
-                allowances[from][to][id] -= amount;
-
-                balanceOf[from][id] -= amount;
-                balanceOf[to][id] += amount;
+                _decreaseAllowance(from, operator, id, amount, false);
+                _safeTransferFrom(from, to, id, amount);
             }
         } else {
             for (uint256 i; i < len; ++i) {
-                id = ids[i];
-                amount = amounts[i];
-
-                balanceOf[from][id] -= amount;
-                balanceOf[to][id] += amount;
+                _safeTransferFrom(from, to, ids[i], amounts[i]);
             }
         }
 
-        emit TransferBatch(msg.sender, from, to, ids, amounts);
-
-        _doSafeBatchTransferAcceptanceCheck(msg.sender, from, to, ids, amounts, data);
+        emit TransferBatch(operator, from, to, ids, amounts);
+        _doSafeBatchTransferAcceptanceCheck(operator, from, to, ids, amounts, data);
     }
 
     /// @dev Implementation copied from solmate/ERC1155
@@ -185,24 +163,24 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     ///////////////////////////////////////////////////////////////////////////
 
     /// inheritdoc IERC1155A
-    function setApprovalForOne(address spender, uint256 id, uint256 amount) public virtual {
-        _setApprovalForOne(msg.sender, spender, id, amount);
+    function setApprovalForOne(address operator, uint256 id, uint256 amount) public virtual {
+        _setAllowance(msg.sender, operator, id, amount, true);
     }
 
     /// inheritdoc IERC1155A
-    function allowance(address owner, address spender, uint256 id) public view virtual returns (uint256) {
-        return allowances[owner][spender][id];
+    function allowance(address owner, address operator, uint256 id) public view virtual returns (uint256) {
+        return allowances[owner][operator][id];
     }
 
     /// inheritdoc IERC1155A
-    function increaseAllowance(address spender, uint256 id, uint256 addedValue) public virtual returns (bool) {
-        _setApprovalForOne(msg.sender, spender, id, allowance(msg.sender, spender, id) + addedValue);
+    function increaseAllowance(address operator, uint256 id, uint256 addedValue) public virtual returns (bool) {
+        _setAllowance(msg.sender, operator, id, allowance(msg.sender, operator, id) + addedValue, true);
         return true;
     }
 
     /// inheritdoc IERC1155A
-    function decreaseAllowance(address spender, uint256 id, uint256 subtractedValue) public virtual returns (bool) {
-        return _decreaseAllowance(msg.sender, spender, id, subtractedValue);
+    function decreaseAllowance(address operator, uint256 id, uint256 subtractedValue) public virtual returns (bool) {
+        return _decreaseAllowance(msg.sender, operator, id, subtractedValue, true);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -210,18 +188,18 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     ///////////////////////////////////////////////////////////////////////////
 
     /// inheritdoc IERC1155A
-    function setApprovalForMany(address spender, uint256[] memory ids, uint256[] memory amounts) public virtual {
+    function setApprovalForMany(address operator, uint256[] memory ids, uint256[] memory amounts) public virtual {
         uint256 idsLength = ids.length;
         if (idsLength != amounts.length) revert LENGTH_MISMATCH();
 
         for (uint256 i; i < idsLength; ++i) {
-            _setApprovalForOne(msg.sender, spender, ids[i], amounts[i]);
+            _setAllowance(msg.sender, operator, ids[i], amounts[i], true);
         }
     }
 
     /// inheritdoc IERC1155A
     function increaseAllowanceForMany(
-        address spender,
+        address operator,
         uint256[] calldata ids,
         uint256[] calldata addedValues
     )
@@ -233,7 +211,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         if (idsLength != addedValues.length) revert LENGTH_MISMATCH();
 
         for (uint256 i; i < idsLength; ++i) {
-            _setApprovalForOne(msg.sender, spender, ids[i], allowance(msg.sender, spender, ids[i]) + addedValues[i]);
+            _setAllowance(msg.sender, operator, ids[i], allowance(msg.sender, operator, ids[i]) + addedValues[i], true);
         }
 
         return true;
@@ -241,7 +219,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
     /// inheritdoc IERC1155A
     function decreaseAllowanceForMany(
-        address spender,
+        address operator,
         uint256[] calldata ids,
         uint256[] calldata subtractedValues
     )
@@ -253,7 +231,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         if (idsLength != subtractedValues.length) revert LENGTH_MISMATCH();
 
         for (uint256 i; i < idsLength; ++i) {
-            _decreaseAllowance(msg.sender, spender, ids[i], subtractedValues[i]);
+            _decreaseAllowance(msg.sender, operator, ids[i], subtractedValues[i], true);
         }
 
         return true;
@@ -264,7 +242,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     //////////////////////////////////////////////////////////////*/
 
     /// @inheritdoc IERC1155A
-    function registerAERC20(uint256 id) external payable virtual override returns (address) {
+    function registerAERC20(uint256 id) external payable override returns (address) {
         if (_totalSupply[id] == 0) revert ID_NOT_MINTED_YET();
         if (aErc20TokenId[id] != address(0)) revert AERC20_ALREADY_REGISTERED();
 
@@ -328,7 +306,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
             IaERC20(aERC20Token).burn(owner, msg.sender, amount);
         }
 
-        _batchMint(owner, msg.sender, ids, amounts, bytes(""));
+        _batchMint(owner, msg.sender, ids, amounts, EMPTY_BYTES);
 
         emit TransmutedBatchToERC1155A(owner, ids, amounts);
     }
@@ -355,7 +333,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
         /// @dev an approval is needed to burn
         IaERC20(aERC20Token).burn(owner, msg.sender, amount);
-        _mint(owner, msg.sender, id, amount, bytes(""));
+        _mint(owner, msg.sender, id, amount, EMPTY_BYTES);
 
         emit TransmutedToERC1155A(owner, id, amount);
     }
@@ -371,7 +349,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     /// @notice See {IERC721Metadata-tokenURI}.
     /// @dev Compute return string from baseURI set for this contract and unique id
     function uri(uint256 id) public view virtual returns (string memory) {
-        return string(abi.encodePacked(_baseURI(), Strings.toString(id)));
+        return string.concat(_baseURI(), Strings.toString(id));
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -411,23 +389,9 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     /// @notice Internal safeTranferFrom function called after all checks from the public function are done
     /// @dev Notice `operator` param. It's msg.sender to the safeTransferFrom function. Function is specific to
     /// @dev singleId approve logic.
-    function _safeTransferFrom(
-        address operator,
-        address from,
-        address to,
-        uint256 id,
-        uint256 amount,
-        bytes calldata data
-    )
-        internal
-        virtual
-    {
+    function _safeTransferFrom(address from, address to, uint256 id, uint256 amount) internal virtual {
         balanceOf[from][id] -= amount;
         balanceOf[to][id] += amount;
-
-        emit TransferSingle(operator, from, to, id, amount);
-
-        _doSafeTransferAcceptanceCheck(operator, from, to, id, amount, data);
     }
 
     /// @notice Internal function for decreasing single id approval amount
@@ -438,7 +402,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         address owner,
         address operator,
         uint256 id,
-        uint256 subtractedValue
+        uint256 subtractedValue,
+        bool emitEvent
     )
         internal
         virtual
@@ -446,7 +411,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     {
         uint256 currentAllowance = allowance(owner, operator, id);
         if (currentAllowance < subtractedValue) revert DECREASED_ALLOWANCE_BELOW_ZERO();
-        _setApprovalForOne(owner, operator, id, currentAllowance - subtractedValue);
+        _setAllowance(owner, operator, id, currentAllowance - subtractedValue, emitEvent);
 
         return true;
     }
@@ -454,12 +419,24 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     /// @notice Internal function for setting single id approval
     /// @dev Used for fine-grained control over approvals with increase/decrease allowance
     /// @dev Notice `owner` param, only contract functions should be able to define it
-    function _setApprovalForOne(address owner, address operator, uint256 id, uint256 amount) internal virtual {
+    function _setAllowance(
+        address owner,
+        address operator,
+        uint256 id,
+        uint256 amount,
+        bool emitEvent
+    )
+        internal
+        virtual
+    {
         if (owner == address(0)) revert ZERO_ADDRESS();
         if (operator == address(0)) revert ZERO_ADDRESS();
 
         allowances[owner][operator][id] = amount;
-        emit ApprovalForOne(owner, operator, id, amount);
+
+        if (emitEvent) {
+            emit ApprovalForOne(owner, operator, id, amount);
+        }
     }
 
     /// @dev Used to construct return url
@@ -475,7 +452,6 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         _totalSupply[id] += amount;
 
         emit TransferSingle(operator, address(0), to, id, amount);
-
         _doSafeTransferAcceptanceCheck(operator, address(0), to, id, amount, data);
     }
 
@@ -504,7 +480,6 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         }
 
         emit TransferBatch(operator, address(0), to, ids, amounts);
-
         _doSafeBatchTransferAcceptanceCheck(operator, address(0), to, ids, amounts, data);
     }
 
@@ -529,10 +504,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
                 id = ids[i];
                 amount = amounts[i];
 
-                if (allowance(from, operator, id) < amount) revert NOT_ENOUGH_ALLOWANCE();
-                allowances[from][operator][ids[i]] -= amounts[i];
-
-                balanceOf[from][ids[i]] -= amounts[i];
+                _decreaseAllowance(from, operator, id, amount, false);
+                _safeTransferFrom(from, address(0), id, amount);
                 _totalSupply[ids[i]] -= amounts[i];
             }
         } else {
@@ -540,7 +513,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
                 id = ids[i];
                 amount = amounts[i];
 
-                balanceOf[from][ids[i]] -= amounts[i];
+                _safeTransferFrom(from, address(0), id, amount);
                 _totalSupply[ids[i]] -= amounts[i];
             }
         }
@@ -552,13 +525,11 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     function _burn(address from, address operator, uint256 id, uint256 amount) internal virtual {
         // Check if the msg.sender is the owner or is approved for all tokens
         if (operator != from && !isApprovedForAll[from][operator]) {
-            // If not, then check if the msg.sender has sufficient allowance
-            if (allowance(from, operator, id) < amount) revert NOT_ENOUGH_ALLOWANCE();
-            allowances[from][operator][id] -= amount; // Deduct the burned amount from the allowance
+            _decreaseAllowance(from, operator, id, amount, false);
         }
 
         // Update the balances and total supply
-        balanceOf[from][id] -= amount;
+        _safeTransferFrom(from, address(0), id, amount);
         _totalSupply[id] -= amount;
 
         emit TransferSingle(operator, from, address(0), id, amount);
@@ -567,8 +538,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     /// @dev allows a developer to integrate their logic to create an aERC20
     function _registerAERC20(uint256 id) internal virtual returns (address aErc20Token);
 
-    /// @dev Implementation copied from openzeppelin-contracts/ERC1155 with new custom error logic and revert on
-    /// transfer to address 0
+    /// @dev Implementation copied from openzeppelin-contracts/ERC1155 with new custom error logic
     function _doSafeTransferAcceptanceCheck(
         address operator,
         address from,

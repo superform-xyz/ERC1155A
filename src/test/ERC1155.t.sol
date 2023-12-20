@@ -1134,6 +1134,33 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
         }
     }
 
+    function testTryToUseApprovalOfSomeElse() external {
+        address alice = address(0xAA);
+        address bob = address(0xBB);
+        address charlie = address(0xCC);
+
+        uint256[] memory ids = new uint256[](1);
+        ids[0] = 1;
+        uint256[] memory amounts = new uint256[](1);
+        amounts[0] = 5;
+
+        // Alice is minted 10 tokens
+        token.mint(alice, ids[0], amounts[0] * 2, "");
+        assertEq(token.balanceOf(alice, ids[0]), 10);
+
+        // Alice sets an allowance of 5 tokens for bob
+        hevm.startPrank(alice);
+        token.increaseAllowance(bob, ids[0], amounts[0]);
+        token.increaseAllowance(charlie, ids[0], amounts[0]);
+        hevm.stopPrank();
+
+        // Bob pulls tokens from alice to charlie - the transaction reverts because of a negative overflow
+        hevm.prank(bob);
+        token.safeBatchTransferFrom(alice, charlie, ids, amounts, hex"");
+        assertEq(token.allowance(alice, bob, ids[0]), 0);
+        assertEq(token.allowance(alice, charlie, ids[0]), amounts[0]);
+    }
+
     function testSafeTransferFromToERC1155Recipient(
         uint256 id,
         uint256 mintAmount,
