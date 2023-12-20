@@ -26,7 +26,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     //////////////////////////////////////////////////////////////
 
     /// @notice ERC20-like mapping for single id supply.
-    mapping(uint256 => uint256) public _totalSupply;
+    mapping(uint256 => uint256) public totalSupply;
 
     /// @notice ERC20-like mapping for single id approvals.
     mapping(address owner => mapping(address operator => mapping(uint256 id => uint256 amount))) private allowances;
@@ -237,7 +237,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
     /// @inheritdoc IERC1155A
     function registerAERC20(uint256 id) external payable override returns (address) {
-        if (_totalSupply[id] == 0) revert ID_NOT_MINTED_YET();
+        if (totalSupply[id] == 0) revert ID_NOT_MINTED_YET();
         if (aErc20TokenId[id] != address(0)) revert AERC20_ALREADY_REGISTERED();
 
         address aErc20Token = _registerAERC20(id);
@@ -352,12 +352,12 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
     /// @notice See {IERC1155A-totalSupply}
     function totalSupply(uint256 id) external view virtual returns (uint256) {
-        return _totalSupply[id];
+        return totalSupply[id];
     }
 
     /// @notice See {IERC1155A-exists}
     function exists(uint256 id) external view virtual returns (bool) {
-        return _totalSupply[id] != 0;
+        return totalSupply[id] != 0;
     }
 
     /// @dev handy helper to check if a AERC20 is registered
@@ -443,7 +443,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     /// @dev Implementation copied from solmate/ERC1155 and adapted with operator logic
     function _mint(address to, address operator, uint256 id, uint256 amount, bytes memory data) internal virtual {
         balanceOf[to][id] += amount;
-        _totalSupply[id] += amount;
+        totalSupply[id] += amount;
 
         emit TransferSingle(operator, address(0), to, id, amount);
         _doSafeTransferAcceptanceCheck(operator, address(0), to, id, amount, data);
@@ -470,7 +470,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
             amount = amounts[i];
 
             balanceOf[to][id] += amount;
-            _totalSupply[id] += amount;
+            totalSupply[id] += amount;
         }
 
         emit TransferBatch(operator, address(0), to, ids, amounts);
@@ -500,7 +500,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
                 _decreaseAllowance(from, operator, id, amount, false);
                 _safeTransferFrom(from, address(0), id, amount);
-                _totalSupply[ids[i]] -= amounts[i];
+                totalSupply[ids[i]] -= amounts[i];
             }
         } else {
             for (uint256 i; i < idsLength; ++i) {
@@ -508,7 +508,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
                 amount = amounts[i];
 
                 _safeTransferFrom(from, address(0), id, amount);
-                _totalSupply[ids[i]] -= amounts[i];
+                totalSupply[ids[i]] -= amounts[i];
             }
         }
 
@@ -524,7 +524,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
         // Update the balances and total supply
         _safeTransferFrom(from, address(0), id, amount);
-        _totalSupply[id] -= amount;
+        totalSupply[id] -= amount;
 
         emit TransferSingle(operator, from, address(0), id, amount);
     }
