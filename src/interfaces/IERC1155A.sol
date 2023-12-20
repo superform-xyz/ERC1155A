@@ -8,9 +8,10 @@ import { IERC1155 } from "openzeppelin-contracts/contracts/token/ERC1155/IERC115
 /// @dev Single/range based id approve capability with conversion to ERC20s
 interface IERC1155A is IERC1155 {
 
-    /*//////////////////////////////////////////////////////////////
-                                 EVENTS
-    //////////////////////////////////////////////////////////////*/
+    //////////////////////////////////////////////////////////////
+    //                          EVENTS                          //
+    //////////////////////////////////////////////////////////////
+
 
     /// @notice event emitted when single id approval is set
     event ApprovalForOne(address indexed owner, address indexed spender, uint256 id, uint256 amount);
@@ -27,9 +28,9 @@ interface IERC1155A is IERC1155 {
     /// @notice event emitted when multiple aERC20s are transmuted to ERC1155A ids
     event TransmutedBatchToERC1155A(address indexed user, uint256[] ids, uint256[] amounts);
 
-    /*//////////////////////////////////////////////////////////////
-                                 ERRORS
-    //////////////////////////////////////////////////////////////*/
+    //////////////////////////////////////////////////////////////
+    //                          ERRORS                          //
+    //////////////////////////////////////////////////////////////
 
     /// @dev thrown if aERC20 was already registered
     error AERC20_ALREADY_REGISTERED();
@@ -52,9 +53,41 @@ interface IERC1155A is IERC1155 {
     /// @dev thrown if address is 0
     error ZERO_ADDRESS();
 
-    /*//////////////////////////////////////////////////////////////
-                              SINGLE APPROVE
-    //////////////////////////////////////////////////////////////*/
+    //////////////////////////////////////////////////////////////
+    //              EXTERNAL VIEW FUNCTIONS                     //
+    //////////////////////////////////////////////////////////////
+
+    /// @notice Public getter for existing single id total supply
+    /// @param id id of the ERC1155 
+    function totalSupply(uint256 id) external view returns (uint256);
+
+    /// @notice Public getter to know if a token id exists
+    /// @dev determines based on total supply for the id
+    /// @param id id of the ERC1155 
+    function exists(uint256 id) external view returns (bool);
+
+    /// @notice Public getter for existing single id approval
+    /// @param owner address of the owner of the ERC1155A id
+    /// @param spender address of the contract to approve
+    /// @param id id of the ERC1155A to approve
+    function allowance(address owner, address spender, uint256 id) external returns (uint256);
+
+    /// @dev handy helper to check if a AERC20 is registered
+    /// @param id id of the ERC1155 
+    function aERC20Exists(uint256 id) external view returns (bool);
+
+    /// @notice Public getter for the address of the aErc20 token for a given ERC1155 id
+    /// @param id id of the ERC1155 to get the aErc20 token address for
+    /// @return aERC20 address of the aErc20 token for the given ERC1155 id
+    function getERC20TokenAddress(uint256 id) external view returns (address aERC20);
+
+    /// @dev Compute return string from baseURI set for this contract and unique vaultId
+    /// @param id id of the ERC1155 
+    function uri(uint256 id) external view returns (string memory);
+
+    //////////////////////////////////////////////////////////////
+    //              EXTERNAL WRITE FUNCTIONS                    //
+    //////////////////////////////////////////////////////////////
 
     /// @notice Public function for setting single id approval
     /// @dev Notice `owner` param, it will always be msg.sender, see _setApprovalForOne()
@@ -63,11 +96,12 @@ interface IERC1155A is IERC1155 {
     /// @param amount amount of the ERC1155A to approve
     function setApprovalForOne(address spender, uint256 id, uint256 amount) external;
 
-    /// @notice Public getter for existing single id approval
-    /// @param owner address of the owner of the ERC1155A id
+    /// @notice Public function for setting multiple id approval
+    /// @dev extension of sigle id approval
     /// @param spender address of the contract to approve
-    /// @param id id of the ERC1155A to approve
-    function allowance(address owner, address spender, uint256 id) external returns (uint256);
+    /// @param ids ids of the ERC1155A to approve
+    /// @param amounts amounts of the ERC1155A to approve
+    function setApprovalForMany(address spender, uint256[] memory ids, uint256[] memory amounts) external;
 
     /// @notice Public function for increasing single id approval amount
     /// @dev Re-adapted from ERC20
@@ -82,17 +116,6 @@ interface IERC1155A is IERC1155 {
     /// @param id id of the ERC1155A to approve
     /// @param subtractedValue amount of the allowance to decrease by 
     function decreaseAllowance(address spender, uint256 id, uint256 subtractedValue) external returns (bool);
-
-    /*//////////////////////////////////////////////////////////////
-                              MULTI APPROVE
-    //////////////////////////////////////////////////////////////*/
-
-    /// @notice Public function for setting multiple id approval
-    /// @dev extension of sigle id approval
-    /// @param spender address of the contract to approve
-    /// @param ids ids of the ERC1155A to approve
-    /// @param amounts amounts of the ERC1155A to approve
-    function setApprovalForMany(address spender, uint256[] memory ids, uint256[] memory amounts) external;
 
     /// @notice Public function for increasing multiple id approval amount at once
     /// @dev extension of single id increase allowance
@@ -120,15 +143,15 @@ interface IERC1155A is IERC1155 {
         external
         returns (bool);
 
-    /*//////////////////////////////////////////////////////////////
-                    AERC20 AND TRANSMUTE LOGIC 
-    //////////////////////////////////////////////////////////////*/
+    /// @param onBehalfOf address of the user on whose behalf this transmutation is happening
+    /// @param id id of the ERC20s to transmute to aErc20
+    /// @param amount amount of the ERC20s to transmute to aErc20
+    function transmuteToERC20(address onBehalfOf, uint256 id, uint256 amount) external;
 
-    /// @notice payable to allow any implementing cross-chain protocol to be paid for fees for relaying this action to
-    /// various chain
-    /// @dev should emit any required events inside _registerAERC20 internal function
-    /// @param id of the ERC1155 to create a ERC20 for
-    function registerAERC20(uint256 id) external payable returns (address);
+    /// @param onBehalfOf address of the user on whose behalf this transmutation is happening
+    /// @param id id of the ERC20s to transmute to erc1155
+    /// @param amount amount of the ERC20s to transmute to erc1155
+    function transmuteToERC1155A(address onBehalfOf, uint256 id, uint256 amount) external;
 
     /// @notice Use transmuteBatchToERC20 to transmute multiple ERC1155 ids into separate ERC20
     /// Easier to transmute to 1155A than to transmute back to aErc20 because of ERC1155 beauty!
@@ -143,43 +166,9 @@ interface IERC1155A is IERC1155 {
     /// @param amounts amounts of the ERC20 to transmute
     function transmuteBatchToERC1155A(address onBehalfOf, uint256[] memory ids, uint256[] memory amounts) external;
 
-    /// @param onBehalfOf address of the user on whose behalf this transmutation is happening
-    /// @param id id of the ERC20s to transmute to aErc20
-    /// @param amount amount of the ERC20s to transmute to aErc20
-    function transmuteToERC20(address onBehalfOf, uint256 id, uint256 amount) external;
-
-    /// @param onBehalfOf address of the user on whose behalf this transmutation is happening
-    /// @param id id of the ERC20s to transmute to erc1155
-    /// @param amount amount of the ERC20s to transmute to erc1155
-    function transmuteToERC1155A(address onBehalfOf, uint256 id, uint256 amount) external;
-
-    /// @notice Public getter for the address of the aErc20 token for a given ERC1155 id
-    /// @param id id of the ERC1155 to get the aErc20 token address for
-    /// @return aERC20 address of the aErc20 token for the given ERC1155 id
-    function getERC20TokenAddress(uint256 id) external view returns (address aERC20);
-
-    /*//////////////////////////////////////////////////////////////
-                                METADATA 
-    //////////////////////////////////////////////////////////////*/
-
-    /// @dev Compute return string from baseURI set for this contract and unique vaultId
-    /// @param id id of the ERC1155 
-    function uri(uint256 id) external view returns (string memory);
-
-    /*//////////////////////////////////////////////////////////////
-                            SUPPLY GETTERS 
-    //////////////////////////////////////////////////////////////*/
-
-    /// @notice Public getter for existing single id total supply
-    /// @param id id of the ERC1155 
-    function totalSupply(uint256 id) external view returns (uint256);
-
-    /// @notice Public getter to know if a token id exists
-    /// @dev determines based on total supply for the id
-    /// @param id id of the ERC1155 
-    function exists(uint256 id) external view returns (bool);
-
-    /// @dev handy helper to check if a AERC20 is registered
-    /// @param id id of the ERC1155 
-    function aERC20Exists(uint256 id) external view returns (bool);
+    /// @notice payable to allow any implementing cross-chain protocol to be paid for fees for relaying this action to
+    /// various chain
+    /// @dev should emit any required events inside _registerAERC20 internal function
+    /// @param id of the ERC1155 to create a ERC20 for
+    function registerAERC20(uint256 id) external payable returns (address);
 }
