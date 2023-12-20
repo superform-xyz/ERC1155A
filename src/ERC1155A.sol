@@ -24,7 +24,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     //////////////////////////////////////////////////////////////
     //                     STATE VARIABLES                      //
     //////////////////////////////////////////////////////////////
-    
+
     /// @notice ERC20-like mapping for single id supply.
     mapping(uint256 => uint256) public _totalSupply;
 
@@ -147,7 +147,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
         balances = new uint256[](owners.length);
 
-        for (uint256 i = 0; i < owners.length; ++i) {
+        for (uint256 i; i < owners.length; ++i) {
             balances[i] = balanceOf[owners[i]][ids[i]];
         }
     }
@@ -263,7 +263,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         /// @dev an approval is needed to burn
         _batchBurn(owner, msg.sender, ids, amounts);
 
-        for (uint256 i = 0; i < idsLength; ++i) {
+        for (uint256 i; i < idsLength; ++i) {
             address aERC20Token = aErc20TokenId[ids[i]];
             if (aERC20Token == address(0)) revert AERC20_NOT_REGISTERED();
 
