@@ -3,8 +3,8 @@ pragma solidity ^0.8.23;
 
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
-/// @title aERC20
-/// @author Zeropoint Labs.
+/// @title IaERC20
+/// @author Zeropoint Labs
 /// @dev ERC20 tokens out of 1155A
 interface IaERC20 is IERC20 {
 

@@ -3,13 +3,18 @@ pragma solidity ^0.8.23;
 
 import { ERC20 } from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import { IaERC20 } from "./interfaces/IaERC20.sol";
-/// @title aERC20
-/// @author Zeropoint Labs.
-/// @dev ERC20 tokens out of 1155a
 
+/// @title aERC20
+/// @author Zeropoint Labs
+/// @dev ERC20 tokens out of 1155a
 contract aERC20 is ERC20, IaERC20 {
+
+    //////////////////////////////////////////////////////////////
+    //                         CONSTANTS                        //
+    //////////////////////////////////////////////////////////////
+
     address public immutable ERC1155A;
-    uint8 private immutable tokenDecimals;
+    uint8 private immutable TOKEN_DECIMALS;
 
     modifier onlyTokenSplitter() {
         if (msg.sender != ERC1155A) {
@@ -20,7 +25,7 @@ contract aERC20 is ERC20, IaERC20 {
 
     constructor(string memory name_, string memory symbol_, uint8 decimals_) ERC20(name_, symbol_) {
         ERC1155A = msg.sender;
-        tokenDecimals = decimals_;
+        TOKEN_DECIMALS = decimals_;
     }
 
     /// inheritdoc IaERC20
@@ -37,6 +42,6 @@ contract aERC20 is ERC20, IaERC20 {
 
     /// inheritdoc IaERC20
     function decimals() public view override returns (uint8) {
-        return tokenDecimals;
+        return TOKEN_DECIMALS;
     }
 }

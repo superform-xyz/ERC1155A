@@ -1,36 +1,30 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-/// library imports
 import { Strings } from "openzeppelin-contracts/contracts/utils/Strings.sol";
 import { IERC165 } from "openzeppelin-contracts/contracts/interfaces/IERC165.sol";
 import { IERC1155 } from "openzeppelin-contracts/contracts/interfaces/IERC1155.sol";
 import { IERC1155MetadataURI } from "openzeppelin-contracts/contracts/interfaces/IERC1155MetadataURI.sol";
 import { IERC1155Errors } from "openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
 import { IERC1155Receiver } from "openzeppelin-contracts/contracts/token/ERC1155/IERC1155Receiver.sol";
-
-/// local imports
 import { IERC1155A } from "./interfaces/IERC1155A.sol";
 import { IaERC20 } from "./interfaces/IaERC20.sol";
 
-/**
- * @title ERC1155A
- * @dev ERC1155A is a proposed extension for ERC1155.
- * @dev Hybrid solmate/openzeppelin implementation, follows ERC1155 standard interface
- *
- * 1. Single id approve capability
- * 2. Allowance management for single id approve
- * 3. Metadata build out of baseURI and id uint value into offchain metadata address
- * 4. Range based approvals
- * 5. Converting to ERC20s back and forth (called AERC20)
- *
- */
+/// @title ERC1155A
+/// @author Zeropoint Labs
+/// @dev Single/range based id approve capability with conversion to ERC20s
 abstract contract ERC1155A is IERC1155A, IERC1155Errors {
-    bytes private constant EMPTY_BYTES = bytes("");
 
-    /*//////////////////////////////////////////////////////////////
-                             ERC1155a STORAGE
-    //////////////////////////////////////////////////////////////*/
+    //////////////////////////////////////////////////////////////
+    //                         CONSTANTS                        //
+    //////////////////////////////////////////////////////////////
+
+    bytes private immutable EMPTY_BYTES = bytes("");
+
+    //////////////////////////////////////////////////////////////
+    //                     STATE VARIABLES                      //
+    //////////////////////////////////////////////////////////////
+    
     /// @notice ERC20-like mapping for single id supply.
     mapping(uint256 => uint256) public _totalSupply;
 
