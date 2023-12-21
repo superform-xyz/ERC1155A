@@ -204,7 +204,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     /// @dev single id approval is senior in execution flow
     /// @dev if approved for all, function executes without reducing allowance
     function safeTransferFrom(
-        address from, s
+        address from,
         address to,
         uint256 id,
         uint256 amount,
