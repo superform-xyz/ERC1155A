@@ -57,7 +57,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         return _totalSupply[id] != 0;
     }
 
-    /// @dev Implementation copied from solmate/ERC1155
+    /// @inheritdoc IERC1155
     function balanceOfBatch(
         address[] calldata owners,
         uint256[] calldata ids
@@ -105,7 +105,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         return string.concat(_baseURI(), Strings.toString(id));
     }
 
-    /// @dev Implementation copied from solmate/ERC1155
+    /// @dev return interface checks
     function supportsInterface(bytes4 interfaceId) public view virtual returns (bool) {
         return interfaceId == type(IERC165).interfaceId // ERC165 Interface ID for ERC165
             || interfaceId == type(IERC1155).interfaceId // ERC165 Interface ID for ERC1155
@@ -134,7 +134,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         }
     }
 
-    /// @dev Implementation copied from solmate/ERC1155
+    /// @inheritdoc IERC1155
     function setApprovalForAll(address operator, bool approved) public virtual {
         if (operator == address(0)) revert ZERO_ADDRESS();
         isApprovedForAll[msg.sender][operator] = approved;
@@ -199,14 +199,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     // Token Transfer Functions
     // -------------------------
 
-    /// @notice Transfer singleApproved id with this function
-    /// @dev If caller is owner of ids, transfer just executes.
-    /// @dev If caller singleApproved >= transferAmount, function executes and reduces allowance (even if
-    /// setApproveForAll is true)
-    /// @dev If caller singleApproved < transferAmount && isApprovedForAll, function executes without reducing allowance
-    /// (full trust assumed)
-    /// @dev If caller only approvedForAll, function executes without reducing allowance (full trust assumed)
-    /// @dev SingleApprove is senior in execution flow, but isApprovedForAll is senior in allowance management
+    /// @inheritdoc IERC1155
     function safeTransferFrom(
         address from,
         address to,
@@ -235,7 +228,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         _doSafeTransferAcceptanceCheck(operator, from, to, id, amount, data);
     }
 
-    /// @dev Implementation copied from solmate/ERC1155
+    /// @inheritdoc IERC1155
     function safeBatchTransferFrom(
         address from,
         address to,

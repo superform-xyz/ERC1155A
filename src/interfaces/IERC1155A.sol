@@ -12,7 +12,6 @@ interface IERC1155A is IERC1155 {
     //                          EVENTS                          //
     //////////////////////////////////////////////////////////////
 
-
     /// @notice event emitted when single id approval is set
     event ApprovalForOne(address indexed owner, address indexed spender, uint256 id, uint256 amount);
 
