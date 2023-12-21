@@ -199,9 +199,12 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     // Token Transfer Functions
     // -------------------------
 
-    /// @inheritdoc IERC1155
+    /// @notice see {IERC1155-safeTransferFrom}
+    /// @dev adds supports for user to not have called setApprovalForAll
+    /// @dev single id approval is senior in execution flow
+    /// @dev if approved for all, function executes without reducing allowance
     function safeTransferFrom(
-        address from,
+        address from, s
         address to,
         uint256 id,
         uint256 amount,
@@ -228,7 +231,10 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         _doSafeTransferAcceptanceCheck(operator, from, to, id, amount, data);
     }
 
-    /// @inheritdoc IERC1155
+    /// @notice see {IERC1155-safeBatchTransferFrom}
+    /// @dev adds supports for user to not have called setApprovalForAll
+    /// @dev single id approvals are senior in execution flow
+    /// @dev if approved for all, function executes without reducing allowance
     function safeBatchTransferFrom(
         address from,
         address to,
