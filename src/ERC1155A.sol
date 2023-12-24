@@ -279,42 +279,43 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     // --------------------
 
     /// @inheritdoc IERC1155A
-    function transmuteToERC20(address owner, uint256 id, uint256 amount) external override {
-        if (owner == address(0)) revert ZERO_ADDRESS();
+    function transmuteToERC20(address owner, uint256 id, uint256 amount, address receiver) external override {
+        if (owner == address(0) || receiver == address(0)) revert ZERO_ADDRESS();
         /// @dev an approval is needed to burn
         _burn(owner, msg.sender, id, amount);
 
         address aERC20Token = aErc20TokenId[id];
         if (aERC20Token == address(0)) revert AERC20_NOT_REGISTERED();
 
-        IaERC20(aERC20Token).mint(owner, amount);
-        emit TransmutedToERC20(owner, id, amount);
+        IaERC20(aERC20Token).mint(receiver, amount);
+        emit TransmutedToERC20(owner, id, amount,receiver);
     }
 
     /// @inheritdoc IERC1155A
-    function transmuteToERC1155A(address owner, uint256 id, uint256 amount) external override {
-        if (owner == address(0)) revert ZERO_ADDRESS();
+    function transmuteToERC1155A(address owner, uint256 id, uint256 amount, address receiver) external override {
+        if (owner == address(0) || receiver == address(0)) revert ZERO_ADDRESS();
 
         address aERC20Token = aErc20TokenId[id];
         if (aERC20Token == address(0)) revert AERC20_NOT_REGISTERED();
 
         /// @dev an approval is needed to burn
         IaERC20(aERC20Token).burn(owner, msg.sender, amount);
-        _mint(owner, msg.sender, id, amount, EMPTY_BYTES);
+        _mint(receiver, msg.sender, id, amount, EMPTY_BYTES);
 
-        emit TransmutedToERC1155A(owner, id, amount);
+        emit TransmutedToERC1155A(owner, id, amount, receiver);
     }
 
     /// @inheritdoc IERC1155A
     function transmuteBatchToERC20(
         address owner,
         uint256[] calldata ids,
-        uint256[] calldata amounts
+        uint256[] calldata amounts,
+        address receiver
     )
         external
         override
     {
-        if (owner == address(0)) revert ZERO_ADDRESS();
+        if (owner == address(0) || receiver == address(0)) revert ZERO_ADDRESS();
 
         uint256 idsLength = ids.length; // Saves MLOADs.
         if (idsLength != amounts.length) revert LENGTH_MISMATCH();
@@ -326,22 +327,23 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
             address aERC20Token = aErc20TokenId[ids[i]];
             if (aERC20Token == address(0)) revert AERC20_NOT_REGISTERED();
 
-            IaERC20(aERC20Token).mint(owner, amounts[i]);
+            IaERC20(aERC20Token).mint(receiver, amounts[i]);
         }
 
-        emit TransmutedBatchToERC20(owner, ids, amounts);
+        emit TransmutedBatchToERC20(owner, ids, amounts,receiver);
     }
 
     /// @inheritdoc IERC1155A
     function transmuteBatchToERC1155A(
         address owner,
         uint256[] calldata ids,
-        uint256[] calldata amounts
+        uint256[] calldata amounts,
+        address receiver
     )
         external
         override
     {
-        if (owner == address(0)) revert ZERO_ADDRESS();
+        if (owner == address(0) || receiver == address(0)) revert ZERO_ADDRESS();
 
         uint256 idsLength = ids.length; // Saves MLOADs.
         if (idsLength != amounts.length) revert LENGTH_MISMATCH();
@@ -359,9 +361,9 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
             IaERC20(aERC20Token).burn(owner, msg.sender, amount);
         }
 
-        _batchMint(owner, msg.sender, ids, amounts, EMPTY_BYTES);
+        _batchMint(receiver, msg.sender, ids, amounts, EMPTY_BYTES);
 
-        emit TransmutedBatchToERC1155A(owner, ids, amounts);
+        emit TransmutedBatchToERC1155A(owner, ids, amounts, receiver);
     }
 
     // aERC20 Registration

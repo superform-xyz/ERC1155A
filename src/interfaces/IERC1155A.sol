@@ -16,16 +16,16 @@ interface IERC1155A is IERC1155 {
     event ApprovalForOne(address indexed owner, address indexed spender, uint256 id, uint256 amount);
 
     /// @notice event emitted when an ERC1155A id is transmuted to an aERC20
-    event TransmutedToERC20(address indexed user, uint256 id, uint256 amount);
+    event TransmutedToERC20(address indexed user, uint256 id, uint256 amount, address indexed receiver);
 
     /// @notice event emitted when an aERC20 is transmuted to an ERC1155 id
-    event TransmutedToERC1155A(address indexed user, uint256 id, uint256 amount);
+    event TransmutedToERC1155A(address indexed user, uint256 id, uint256 amount, address indexed receiver);
 
     /// @notice event emitted when multiple ERC1155A ids are transmuted to aERC20s
-    event TransmutedBatchToERC20(address indexed user, uint256[] ids, uint256[] amounts);
+    event TransmutedBatchToERC20(address indexed user, uint256[] ids, uint256[] amounts, address indexed receiver);
 
     /// @notice event emitted when multiple aERC20s are transmuted to ERC1155A ids
-    event TransmutedBatchToERC1155A(address indexed user, uint256[] ids, uint256[] amounts);
+    event TransmutedBatchToERC1155A(address indexed user, uint256[] ids, uint256[] amounts, address indexed receiver);
 
     //////////////////////////////////////////////////////////////
     //                          ERRORS                          //
@@ -142,28 +142,32 @@ interface IERC1155A is IERC1155 {
         external
         returns (bool);
 
-    /// @param onBehalfOf address of the user on whose behalf this transmutation is happening
+    /// @param owner address of the user on whose behalf this transmutation is happening
     /// @param id id of the ERC20s to transmute to aErc20
     /// @param amount amount of the ERC20s to transmute to aErc20
-    function transmuteToERC20(address onBehalfOf, uint256 id, uint256 amount) external;
+    /// @param receiver address of the user to receive the aErc20 token
+    function transmuteToERC20(address owner, uint256 id, uint256 amount, address receiver) external;
 
-    /// @param onBehalfOf address of the user on whose behalf this transmutation is happening
+    /// @param owner address of the user on whose behalf this transmutation is happening
     /// @param id id of the ERC20s to transmute to erc1155
     /// @param amount amount of the ERC20s to transmute to erc1155
-    function transmuteToERC1155A(address onBehalfOf, uint256 id, uint256 amount) external;
+    /// @param receiver address of the user to receive the erc1155 token id
+    function transmuteToERC1155A(address owner, uint256 id, uint256 amount, address receiver) external;
 
     /// @notice Use transmuteBatchToERC20 to transmute multiple ERC1155 ids into separate ERC20
     /// Easier to transmute to 1155A than to transmute back to aErc20 because of ERC1155 beauty!
-    /// @param onBehalfOf address of the user on whose behalf this transmutation is happening
+    /// @param owner address of the user on whose behalf this transmutation is happening
     /// @param ids ids of the ERC1155A to transmute
     /// @param amounts amounts of the ERC1155A to transmute
-    function transmuteBatchToERC20(address onBehalfOf, uint256[] memory ids, uint256[] memory amounts) external;
+    /// @param receiver address of the user to receive the aErc20 tokens
+    function transmuteBatchToERC20(address owner, uint256[] memory ids, uint256[] memory amounts, address receiver) external;
 
     /// @notice Use transmuteBatchToERC1155A to transmute multiple ERC20 ids into separate ERC1155
-    /// @param onBehalfOf address of the user on whose behalf this transmutation is happening
+    /// @param owner address of the user on whose behalf this transmutation is happening
     /// @param ids ids of the ERC20 to transmute
     /// @param amounts amounts of the ERC20 to transmute
-    function transmuteBatchToERC1155A(address onBehalfOf, uint256[] memory ids, uint256[] memory amounts) external;
+    /// @param receiver address of the user to receive the erc1155 token ids
+    function transmuteBatchToERC1155A(address owner, uint256[] memory ids, uint256[] memory amounts, address receiver) external;
 
     /// @notice payable to allow any implementing cross-chain protocol to be paid for fees for relaying this action to
     /// various chain

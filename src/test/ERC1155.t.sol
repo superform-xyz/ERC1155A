@@ -481,22 +481,22 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
 
     function testFailZeroAddressTransmuteBatchToERC20() public {
         /// zero address check on transmuteBatchToERC20
-        token.transmuteBatchToERC20(address(0), new uint256[](1), new uint256[](1));
+        token.transmuteBatchToERC20(address(0), new uint256[](1), new uint256[](1), address(0));
     }
 
     function testFailZeroAddressTransmuteBatchToERC1155A() public {
         /// zero address check on transmuteBatchToERC1155A
-        token.transmuteBatchToERC1155A(address(0), new uint256[](1), new uint256[](1));
+        token.transmuteBatchToERC1155A(address(0), new uint256[](1), new uint256[](1), address(0));
     }
 
     function testFailZeroAddressTransmuteToERC20() public {
         /// zero address check on transmuteToERC20
-        token.transmuteToERC20(address(0), 1, 100);
+        token.transmuteToERC20(address(0), 1, 100, address(0));
     }
 
     function testFailZeroAddressTransmuteToERC1155A() public {
         /// zero address check on transmuteToERC1155A
-        token.transmuteToERC1155A(address(0), 1, 100);
+        token.transmuteToERC1155A(address(0), 1, 100, address(0));
     }
 
     function testFailArrayMismatchIncreaseAllowanceForMany() public {
@@ -512,11 +512,11 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
     }
 
     function testFailArrayMismatchTransmuteBatchToERC20() public {
-        token.transmuteBatchToERC20(address(0xBEEF), new uint256[](1), new uint256[](2));
+        token.transmuteBatchToERC20(address(0xBEEF), new uint256[](1), new uint256[](2), address(0xBEEF));
     }
 
     function testFailArrayMismatchTransmuteBatchToERC1155A() public {
-        token.transmuteBatchToERC1155A(address(0xBEEF), new uint256[](1), new uint256[](2));
+        token.transmuteBatchToERC1155A(address(0xBEEF), new uint256[](1), new uint256[](2), address(0xBEEF));
     }
 
     function testFailMintToNonERC155Recipient() public {
