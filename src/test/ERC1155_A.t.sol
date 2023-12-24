@@ -456,6 +456,7 @@ contract ERC1155ATest is Test {
 
         MockedERC1155A.transmuteToERC20(alice, id, THOUSAND_E18, bob);
         assertEq(MockedERC1155A.balanceOf(alice, id), 0);
+        assertEq(MockedERC1155A.balanceOf(bob, id), 0);
 
         uint256 aliceaERC20Balance = aERC20Token.balanceOf(alice);
         assertEq(aliceaERC20Balance, 0);
@@ -473,8 +474,10 @@ contract ERC1155ATest is Test {
         MockedERC1155A.transmuteToERC1155A(bob, id, bobaERC20Balance, alice);
 
         assertEq(MockedERC1155A.balanceOf(alice, id), THOUSAND_E18);
+        assertEq(MockedERC1155A.balanceOf(bob, id), 0);
 
         assertEq(aERC20Token.balanceOf(address(bob)), 0);
+        assertEq(aERC20Token.balanceOf(address(alice)), 0);
         vm.stopPrank();
     }
 }
