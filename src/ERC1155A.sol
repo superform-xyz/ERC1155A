@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
+import { IERC1155A } from "./interfaces/IERC1155A.sol";
+import { IaERC20 } from "./interfaces/IaERC20.sol";
 import { Strings } from "openzeppelin-contracts/contracts/utils/Strings.sol";
 import { IERC165 } from "openzeppelin-contracts/contracts/interfaces/IERC165.sol";
 import { IERC1155 } from "openzeppelin-contracts/contracts/interfaces/IERC1155.sol";
 import { IERC1155MetadataURI } from "openzeppelin-contracts/contracts/interfaces/IERC1155MetadataURI.sol";
 import { IERC1155Errors } from "openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol";
 import { IERC1155Receiver } from "openzeppelin-contracts/contracts/token/ERC1155/IERC1155Receiver.sol";
-import { IERC1155A } from "./interfaces/IERC1155A.sol";
-import { IaERC20 } from "./interfaces/IaERC20.sol";
 
 /// @title ERC1155A
-/// @author Zeropoint Labs
 /// @dev Single/range based id approve capability with conversion to ERC20s
+/// @author Zeropoint Labs
 abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
     //////////////////////////////////////////////////////////////
@@ -25,10 +25,10 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     //                     STATE VARIABLES                      //
     //////////////////////////////////////////////////////////////
 
-    /// @notice ERC20-like mapping for single id supply.
+    /// @dev ERC20-like mapping for single id supply.
     mapping(uint256 => uint256) private _totalSupply;
 
-    /// @notice ERC20-like mapping for single id approvals.
+    /// @dev ERC20-like mapping for single id approvals.
     mapping(address owner => mapping(address operator => mapping(uint256 id => uint256 amount))) private allowances;
 
     /// @dev Implementation copied from solmate/ERC1155

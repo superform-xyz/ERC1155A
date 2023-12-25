@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import { ERC20 } from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import { IaERC20 } from "./interfaces/IaERC20.sol";
+import { ERC20 } from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 
 /// @title aERC20
+/// @dev ERC20 tokens out of 1155A
 /// @author Zeropoint Labs
-/// @dev ERC20 tokens out of 1155a
 contract aERC20 is ERC20, IaERC20 {
 
     //////////////////////////////////////////////////////////////
