@@ -12,19 +12,19 @@ interface IERC1155A is IERC1155 {
     //                          EVENTS                          //
     //////////////////////////////////////////////////////////////
 
-    /// @notice event emitted when single id approval is set
+    /// @dev emitted when single id approval is set
     event ApprovalForOne(address indexed owner, address indexed spender, uint256 id, uint256 amount);
 
-    /// @notice event emitted when an ERC1155A id is transmuted to an aERC20
+    /// @dev emitted when an ERC1155A id is transmuted to an aERC20
     event TransmutedToERC20(address indexed user, uint256 id, uint256 amount, address indexed receiver);
 
-    /// @notice event emitted when an aERC20 is transmuted to an ERC1155 id
+    /// @dev emitted when an aERC20 is transmuted to an ERC1155 id
     event TransmutedToERC1155A(address indexed user, uint256 id, uint256 amount, address indexed receiver);
 
-    /// @notice event emitted when multiple ERC1155A ids are transmuted to aERC20s
+    /// @dev emitted when multiple ERC1155A ids are transmuted to aERC20s
     event TransmutedBatchToERC20(address indexed user, uint256[] ids, uint256[] amounts, address indexed receiver);
 
-    /// @notice event emitted when multiple aERC20s are transmuted to ERC1155A ids
+    /// @dev emitted when multiple aERC20s are transmuted to ERC1155A ids
     event TransmutedBatchToERC1155A(address indexed user, uint256[] ids, uint256[] amounts, address indexed receiver);
 
     //////////////////////////////////////////////////////////////
@@ -71,7 +71,7 @@ interface IERC1155A is IERC1155 {
     /// @param id id of the ERC1155A to approve
     function allowance(address owner, address spender, uint256 id) external returns (uint256);
 
-    /// @dev handy helper to check if a AERC20 is registered
+    /// @notice handy helper to check if a AERC20 is registered
     /// @param id id of the ERC1155 
     function aERC20Exists(uint256 id) external view returns (bool);
 
@@ -80,7 +80,7 @@ interface IERC1155A is IERC1155 {
     /// @return aERC20 address of the aErc20 token for the given ERC1155 id
     function getERC20TokenAddress(uint256 id) external view returns (address aERC20);
 
-    /// @dev Compute return string from baseURI set for this contract and unique vaultId
+    /// @notice Compute return string from baseURI set for this contract and unique vaultId
     /// @param id id of the ERC1155 
     function uri(uint256 id) external view returns (string memory);
 
@@ -142,35 +142,39 @@ interface IERC1155A is IERC1155 {
         external
         returns (bool);
 
+    /// @notice Turn ERC1155A id into an aERC20
+    /// @dev allows owner to send ERC1155A id as an aERC20 to receiver
     /// @param owner address of the user on whose behalf this transmutation is happening
-    /// @param id id of the ERC20s to transmute to aErc20
-    /// @param amount amount of the ERC20s to transmute to aErc20
-    /// @param receiver address of the user to receive the aErc20 token
+    /// @param id id of the ERC20s to transmute to aERC20
+    /// @param amount amount of the ERC20s to transmute to aERC20
+    /// @param receiver address of the user to receive the aERC20 token
     function transmuteToERC20(address owner, uint256 id, uint256 amount, address receiver) external;
 
+    /// @notice Turn aERC20 into an ERC1155A id 
+    /// @dev allows owner to send ERC20 as an ERC1155A id to receiver
     /// @param owner address of the user on whose behalf this transmutation is happening
     /// @param id id of the ERC20s to transmute to erc1155
     /// @param amount amount of the ERC20s to transmute to erc1155
     /// @param receiver address of the user to receive the erc1155 token id
     function transmuteToERC1155A(address owner, uint256 id, uint256 amount, address receiver) external;
 
-    /// @notice Use transmuteBatchToERC20 to transmute multiple ERC1155 ids into separate ERC20
-    /// Easier to transmute to 1155A than to transmute back to aErc20 because of ERC1155 beauty!
+    /// @notice Turn ERC1155A ids into aERC20s
+    /// @dev allows owner to send ERC1155A ids as aERC20s to receiver
     /// @param owner address of the user on whose behalf this transmutation is happening
     /// @param ids ids of the ERC1155A to transmute
     /// @param amounts amounts of the ERC1155A to transmute
-    /// @param receiver address of the user to receive the aErc20 tokens
+    /// @param receiver address of the user to receive the aERC20 tokens
     function transmuteBatchToERC20(address owner, uint256[] memory ids, uint256[] memory amounts, address receiver) external;
 
-    /// @notice Use transmuteBatchToERC1155A to transmute multiple ERC20 ids into separate ERC1155
+    /// @notice Turn aERC20s into ERC1155A ids
+    /// @dev allows owner to send aERC20s as ERC1155A ids to receiver
     /// @param owner address of the user on whose behalf this transmutation is happening
     /// @param ids ids of the ERC20 to transmute
     /// @param amounts amounts of the ERC20 to transmute
-    /// @param receiver address of the user to receive the erc1155 token ids
+    /// @param receiver address of the user to receive the ERC1155 token ids
     function transmuteBatchToERC1155A(address owner, uint256[] memory ids, uint256[] memory amounts, address receiver) external;
 
-    /// @notice payable to allow any implementing cross-chain protocol to be paid for fees for relaying this action to
-    /// various chain
+    /// @notice payable to allow any implementing cross-chain protocol to be paid for fees for broadcasting
     /// @dev should emit any required events inside _registerAERC20 internal function
     /// @param id of the ERC1155 to create a ERC20 for
     function registerAERC20(uint256 id) external payable returns (address);
