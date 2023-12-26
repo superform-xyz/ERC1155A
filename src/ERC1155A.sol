@@ -14,7 +14,6 @@ import { IERC1155Receiver } from "openzeppelin-contracts/contracts/token/ERC1155
 /// @dev Single/range based id approve capability with conversion to ERC20s
 /// @author Zeropoint Labs
 abstract contract ERC1155A is IERC1155A, IERC1155Errors {
-
     //////////////////////////////////////////////////////////////
     //                         CONSTANTS                        //
     //////////////////////////////////////////////////////////////
@@ -96,7 +95,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     function getERC20TokenAddress(uint256 id) external view virtual override returns (address) {
         return aErc20TokenId[id];
     }
-    
+
     // Metadata and Interface Support
     // ------------------------------
 
@@ -145,7 +144,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     // Allowance Modification
     // -----------------------
 
-   /// @inheritdoc IERC1155A
+    /// @inheritdoc IERC1155A
     function increaseAllowance(address operator, uint256 id, uint256 addedValue) public virtual returns (bool) {
         _setAllowance(msg.sender, operator, id, allowance(msg.sender, operator, id) + addedValue, true);
         return true;
@@ -288,7 +287,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         if (aERC20Token == address(0)) revert AERC20_NOT_REGISTERED();
 
         IaERC20(aERC20Token).mint(receiver, amount);
-        emit TransmutedToERC20(owner, id, amount,receiver);
+        emit TransmutedToERC20(owner, id, amount, receiver);
     }
 
     /// @inheritdoc IERC1155A
@@ -330,7 +329,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
             IaERC20(aERC20Token).mint(receiver, amounts[i]);
         }
 
-        emit TransmutedBatchToERC20(owner, ids, amounts,receiver);
+        emit TransmutedBatchToERC20(owner, ids, amounts, receiver);
     }
 
     /// @inheritdoc IERC1155A
@@ -435,6 +434,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     /// @dev Implementation copied from solmate/ERC1155 and adapted with operator logic
     function _burn(address from, address operator, uint256 id, uint256 amount) internal virtual {
         // Check if the msg.sender is the owner or is approved for all tokens
+        /// Most implementations of _burn don't use allowance, but it is a good practice to check for it
+        /// Otherwise it could allow to burn tokens on which no explicit allowance is given
         if (operator != from && !isApprovedForAll[from][operator]) {
             _decreaseAllowance(from, operator, id, amount, false);
         }
