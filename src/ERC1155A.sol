@@ -58,8 +58,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
 
     /// @inheritdoc IERC1155
     function balanceOfBatch(
-        address[] calldata owners,
-        uint256[] calldata ids
+        address[] memory owners,
+        uint256[] memory ids
     )
         public
         view
@@ -158,8 +158,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     /// @inheritdoc IERC1155A
     function increaseAllowanceForMany(
         address operator,
-        uint256[] calldata ids,
-        uint256[] calldata addedValues
+        uint256[] memory ids,
+        uint256[] memory addedValues
     )
         public
         virtual
@@ -178,8 +178,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     /// @inheritdoc IERC1155A
     function decreaseAllowanceForMany(
         address operator,
-        uint256[] calldata ids,
-        uint256[] calldata subtractedValues
+        uint256[] memory ids,
+        uint256[] memory subtractedValues
     )
         public
         virtual
@@ -207,7 +207,7 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
         address to,
         uint256 id,
         uint256 amount,
-        bytes calldata data
+        bytes memory data
     )
         public
         virtual
@@ -237,9 +237,9 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     function safeBatchTransferFrom(
         address from,
         address to,
-        uint256[] calldata ids,
-        uint256[] calldata amounts,
-        bytes calldata data
+        uint256[] memory ids,
+        uint256[] memory amounts,
+        bytes memory data
     )
         public
         virtual
@@ -307,8 +307,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     /// @inheritdoc IERC1155A
     function transmuteBatchToERC20(
         address owner,
-        uint256[] calldata ids,
-        uint256[] calldata amounts,
+        uint256[] memory ids,
+        uint256[] memory amounts,
         address receiver
     )
         external
@@ -335,8 +335,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     /// @inheritdoc IERC1155A
     function transmuteBatchToERC1155A(
         address owner,
-        uint256[] calldata ids,
-        uint256[] calldata amounts,
+        uint256[] memory ids,
+        uint256[] memory amounts,
         address receiver
     )
         external
@@ -407,8 +407,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     function _batchMint(
         address to,
         address operator,
-        uint256[] calldata ids,
-        uint256[] calldata amounts,
+        uint256[] memory ids,
+        uint256[] memory amounts,
         bytes memory data
     )
         internal
@@ -451,8 +451,8 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     function _batchBurn(
         address from,
         address operator,
-        uint256[] calldata ids,
-        uint256[] calldata amounts
+        uint256[] memory ids,
+        uint256[] memory amounts
     )
         internal
         virtual
