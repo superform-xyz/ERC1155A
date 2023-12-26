@@ -206,7 +206,7 @@ contract ERC1155ATest is Test {
         vm.stopPrank();
         vm.startPrank(alice);
 
-        MockedERC1155A.transmuteToERC20(alice, id, THOUSAND_E18);
+        MockedERC1155A.transmuteToERC20(alice, id, THOUSAND_E18, alice);
         assertEq(MockedERC1155A.balanceOf(alice, id), 0);
 
         uint256 aERC20Balance = aERC20Token.balanceOf(alice);
@@ -215,7 +215,7 @@ contract ERC1155ATest is Test {
         aERC20Token.approve(address(MockedERC1155A), aERC20Balance);
 
         /// NOTE: Test if 1:1 between 1155 and 20 always holds
-        MockedERC1155A.transmuteToERC1155A(alice, id, aERC20Balance);
+        MockedERC1155A.transmuteToERC1155A(alice, id, aERC20Balance, alice);
 
         assertEq(MockedERC1155A.balanceOf(alice, id), THOUSAND_E18);
 
@@ -236,16 +236,16 @@ contract ERC1155ATest is Test {
         vm.startPrank(alice);
 
         vm.expectRevert(IERC1155A.AERC20_NOT_REGISTERED.selector);
-        MockedERC1155A.transmuteToERC20(alice, id, THOUSAND_E18);
+        MockedERC1155A.transmuteToERC20(alice, id, THOUSAND_E18, alice);
 
         vm.expectRevert(IERC1155A.AERC20_NOT_REGISTERED.selector);
-        MockedERC1155A.transmuteToERC1155A(alice, id, THOUSAND_E18);
+        MockedERC1155A.transmuteToERC1155A(alice, id, THOUSAND_E18, alice);
 
         vm.expectRevert(IERC1155A.AERC20_NOT_REGISTERED.selector);
-        MockedERC1155A.transmuteBatchToERC20(alice, ids, amounts);
+        MockedERC1155A.transmuteBatchToERC20(alice, ids, amounts, alice);
 
         vm.expectRevert(IERC1155A.AERC20_NOT_REGISTERED.selector);
-        MockedERC1155A.transmuteBatchToERC1155A(alice, ids, amounts);
+        MockedERC1155A.transmuteBatchToERC1155A(alice, ids, amounts, alice);
     }
 
     function testAERC20CreationSingleApprove() public {
@@ -259,7 +259,7 @@ contract ERC1155ATest is Test {
         MockedERC1155A.setApprovalForOne(bob, id, THOUSAND_E18);
 
         vm.prank(bob);
-        MockedERC1155A.transmuteToERC20(alice, id, THOUSAND_E18);
+        MockedERC1155A.transmuteToERC20(alice, id, THOUSAND_E18, alice);
 
         assertEq(MockedERC1155A.balanceOf(alice, id), 0);
         assertEq(MockedERC1155A.allowance(alice, bob, id), 0);
@@ -274,7 +274,7 @@ contract ERC1155ATest is Test {
 
         vm.prank(bob);
         /// NOTE: Test if 1:1 between 1155 and 20 always holds
-        MockedERC1155A.transmuteToERC1155A(alice, id, aERC20Balance);
+        MockedERC1155A.transmuteToERC1155A(alice, id, aERC20Balance, alice);
 
         assertEq(MockedERC1155A.balanceOf(alice, id), THOUSAND_E18);
 
@@ -292,7 +292,7 @@ contract ERC1155ATest is Test {
         MockedERC1155A.setApprovalForOne(bob, id, THOUSAND_E18);
 
         vm.prank(bob);
-        MockedERC1155A.transmuteToERC20(alice, id, THOUSAND_E18);
+        MockedERC1155A.transmuteToERC20(alice, id, THOUSAND_E18, alice);
 
         assertEq(MockedERC1155A.balanceOf(alice, id), 0);
         assertEq(MockedERC1155A.allowance(alice, bob, id), 0);
@@ -306,7 +306,7 @@ contract ERC1155ATest is Test {
 
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, bob, 0, aERC20Balance));
-        MockedERC1155A.transmuteToERC1155A(alice, id, aERC20Balance);
+        MockedERC1155A.transmuteToERC1155A(alice, id, aERC20Balance, alice);
     }
 
     function testAERC20CreationBatch() public {
@@ -328,7 +328,7 @@ contract ERC1155ATest is Test {
         amounts[0] = THOUSAND_E18;
         amounts[1] = THOUSAND_E18;
 
-        MockedERC1155A.transmuteBatchToERC20(alice, ids, amounts);
+        MockedERC1155A.transmuteBatchToERC20(alice, ids, amounts, alice);
 
         assertEq(MockedERC1155A.balanceOf(alice, ids[0]), 0);
         assertEq(MockedERC1155A.balanceOf(alice, ids[1]), 0);
@@ -337,7 +337,7 @@ contract ERC1155ATest is Test {
         assertEq(aERC20Token2.balanceOf(alice), THOUSAND_E18);
 
         /// NOTE: Test if 1:1 between 1155 and 20 always holds
-        MockedERC1155A.transmuteBatchToERC1155A(alice, ids, amounts);
+        MockedERC1155A.transmuteBatchToERC1155A(alice, ids, amounts, alice);
 
         assertEq(MockedERC1155A.balanceOf(alice, ids[0]), THOUSAND_E18);
         assertEq(MockedERC1155A.balanceOf(alice, ids[1]), THOUSAND_E18);
@@ -370,7 +370,7 @@ contract ERC1155ATest is Test {
 
         vm.prank(bob);
 
-        MockedERC1155A.transmuteBatchToERC20(alice, ids, amounts);
+        MockedERC1155A.transmuteBatchToERC20(alice, ids, amounts, alice);
         vm.startPrank(alice);
 
         assertEq(MockedERC1155A.balanceOf(alice, ids[0]), 0);
@@ -387,7 +387,7 @@ contract ERC1155ATest is Test {
 
         vm.prank(bob);
         /// NOTE: Test if 1:1 between 1155 and 20 always holds
-        MockedERC1155A.transmuteBatchToERC1155A(alice, ids, amounts);
+        MockedERC1155A.transmuteBatchToERC1155A(alice, ids, amounts, alice);
 
         assertEq(MockedERC1155A.balanceOf(alice, ids[0]), THOUSAND_E18);
         assertEq(MockedERC1155A.balanceOf(alice, ids[1]), THOUSAND_E18);
@@ -419,7 +419,7 @@ contract ERC1155ATest is Test {
 
         vm.prank(bob);
 
-        MockedERC1155A.transmuteBatchToERC20(alice, ids, amounts);
+        MockedERC1155A.transmuteBatchToERC20(alice, ids, amounts, alice);
         vm.startPrank(alice);
 
         assertEq(MockedERC1155A.balanceOf(alice, ids[0]), 0);
@@ -434,7 +434,7 @@ contract ERC1155ATest is Test {
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, bob, 0, THOUSAND_E18));
         /// NOTE: Test if 1:1 between 1155 and 20 always holds
-        MockedERC1155A.transmuteBatchToERC1155A(alice, ids, amounts);
+        MockedERC1155A.transmuteBatchToERC1155A(alice, ids, amounts, alice);
     }
 
     function testAERC20CreationrAlreadyRegistered() public {
@@ -444,5 +444,40 @@ contract ERC1155ATest is Test {
         vm.prank(deployer);
         vm.expectRevert(IERC1155A.AERC20_ALREADY_REGISTERED.selector);
         aERC20Token = aERC20(MockedERC1155A.registerAERC20(1));
+    }
+
+    function testAERC20TransmuteRoundTripToReceiver() public {
+        vm.startPrank(deployer);
+        uint256 id = 3;
+        MockedERC1155A.mint(alice, id, THOUSAND_E18, "");
+        aERC20 aERC20Token = aERC20(MockedERC1155A.registerAERC20(id));
+        vm.stopPrank();
+        vm.startPrank(alice);
+
+        MockedERC1155A.transmuteToERC20(alice, id, THOUSAND_E18, bob);
+        assertEq(MockedERC1155A.balanceOf(alice, id), 0);
+        assertEq(MockedERC1155A.balanceOf(bob, id), 0);
+
+        uint256 aliceaERC20Balance = aERC20Token.balanceOf(alice);
+        assertEq(aliceaERC20Balance, 0);
+
+        uint256 bobaERC20Balance = aERC20Token.balanceOf(bob);
+        assertEq(bobaERC20Balance, THOUSAND_E18);
+
+        vm.stopPrank();
+
+        vm.startPrank(bob);
+
+        aERC20Token.approve(address(MockedERC1155A), bobaERC20Balance);
+
+        /// NOTE: Test if 1:1 between 1155 and 20 always holds
+        MockedERC1155A.transmuteToERC1155A(bob, id, bobaERC20Balance, alice);
+
+        assertEq(MockedERC1155A.balanceOf(alice, id), THOUSAND_E18);
+        assertEq(MockedERC1155A.balanceOf(bob, id), 0);
+
+        assertEq(aERC20Token.balanceOf(address(bob)), 0);
+        assertEq(aERC20Token.balanceOf(address(alice)), 0);
+        vm.stopPrank();
     }
 }
