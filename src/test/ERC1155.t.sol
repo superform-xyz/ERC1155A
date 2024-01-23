@@ -11,7 +11,6 @@ import { MockERC1155A } from "./mocks/MockERC1155A.sol";
  * original by @author - solmate
  * forked by @author - ZeroPointLabs
  */
-
 contract ERC1155Recipient is ERC1155TokenReceiver {
     address public operator;
     address public from;
@@ -149,6 +148,11 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
 
     function setUp() public {
         token = new MockERC1155A("example", "exm");
+    }
+
+    function test_name_symbol() public {
+        assertEq(token.name(), "example");
+        assertEq(token.symbol(), "exm");
     }
 
     function testMintToEOA() public {
