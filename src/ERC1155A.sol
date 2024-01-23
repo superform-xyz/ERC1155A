@@ -39,6 +39,23 @@ abstract contract ERC1155A is IERC1155A, IERC1155Errors {
     /// @dev mapping of token ids to aErc20 token addresses
     mapping(uint256 id => address aErc20Token) public aErc20TokenId;
 
+    /// @dev ERC1155A name
+    string public name;
+    /// @dev ERC1155A symbol
+    string public symbol;
+
+    //////////////////////////////////////////////////////////////
+    //                      CONSTRUCTOR                         //
+    //////////////////////////////////////////////////////////////
+
+    /// @dev Initializes ERC1155A
+    /// @param name_ ERC1155A name
+    /// @param symbol_ ERC1155A symbol
+    constructor(string memory name_, string memory symbol_) {
+        name = name_;
+        symbol = symbol_;
+    }
+
     //////////////////////////////////////////////////////////////
     //              EXTERNAL VIEW FUNCTIONS                     //
     //////////////////////////////////////////////////////////////
