@@ -18,7 +18,7 @@ contract ERC1155ATest is Test {
     address public bob = address(0x0997);
 
     function setUp() public {
-        MockedERC1155A = new MockERC1155A();
+        MockedERC1155A = new MockERC1155A("example", "EXM");
         MockedERC1155A.mint(alice, 1, THOUSAND_E18, "");
         MockedERC1155A.mint(alice, 2, THOUSAND_E18, "");
     }

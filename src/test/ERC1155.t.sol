@@ -148,7 +148,7 @@ contract ERC1155Test is DSTestPlus, ERC1155TokenReceiver {
     mapping(address => mapping(uint256 => uint256)) public userTransferOrBurnAmounts;
 
     function setUp() public {
-        token = new MockERC1155A();
+        token = new MockERC1155A("example", "exm");
     }
 
     function testMintToEOA() public {

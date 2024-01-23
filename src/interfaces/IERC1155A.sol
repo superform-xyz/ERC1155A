@@ -7,7 +7,6 @@ import { IERC1155 } from "openzeppelin-contracts/contracts/token/ERC1155/IERC115
 /// @author Zeropoint Labs
 /// @dev Single/range based id approve capability with conversion to ERC20s
 interface IERC1155A is IERC1155 {
-
     //////////////////////////////////////////////////////////////
     //                          EVENTS                          //
     //////////////////////////////////////////////////////////////
@@ -57,12 +56,12 @@ interface IERC1155A is IERC1155 {
     //////////////////////////////////////////////////////////////
 
     /// @notice Public getter for existing single id total supply
-    /// @param id id of the ERC1155 
+    /// @param id id of the ERC1155
     function totalSupply(uint256 id) external view returns (uint256);
 
     /// @notice Public getter to know if a token id exists
     /// @dev determines based on total supply for the id
-    /// @param id id of the ERC1155 
+    /// @param id id of the ERC1155
     function exists(uint256 id) external view returns (bool);
 
     /// @notice Public getter for existing single id approval
@@ -72,7 +71,7 @@ interface IERC1155A is IERC1155 {
     function allowance(address owner, address spender, uint256 id) external returns (uint256);
 
     /// @notice handy helper to check if a AERC20 is registered
-    /// @param id id of the ERC1155 
+    /// @param id id of the ERC1155
     function aERC20Exists(uint256 id) external view returns (bool);
 
     /// @notice Public getter for the address of the aErc20 token for a given ERC1155 id
@@ -81,8 +80,14 @@ interface IERC1155A is IERC1155 {
     function getERC20TokenAddress(uint256 id) external view returns (address aERC20);
 
     /// @notice Compute return string from baseURI set for this contract and unique vaultId
-    /// @param id id of the ERC1155 
+    /// @param id id of the ERC1155
     function uri(uint256 id) external view returns (string memory);
+
+    /// @notice ERC1155A name
+    function name() external view returns (string memory);
+
+    /// @notice ERC1155A symbol
+    function symbol() external view returns (string memory);
 
     //////////////////////////////////////////////////////////////
     //              EXTERNAL WRITE FUNCTIONS                    //
@@ -106,21 +111,21 @@ interface IERC1155A is IERC1155 {
     /// @dev Re-adapted from ERC20
     /// @param spender address of the contract to approve
     /// @param id id of the ERC1155A to approve
-    /// @param addedValue amount of the allowance to increase by 
+    /// @param addedValue amount of the allowance to increase by
     function increaseAllowance(address spender, uint256 id, uint256 addedValue) external returns (bool);
 
     /// @notice Public function for decreasing single id approval amount
     /// @dev Re-adapted from ERC20
     /// @param spender address of the contract to approve
     /// @param id id of the ERC1155A to approve
-    /// @param subtractedValue amount of the allowance to decrease by 
+    /// @param subtractedValue amount of the allowance to decrease by
     function decreaseAllowance(address spender, uint256 id, uint256 subtractedValue) external returns (bool);
 
     /// @notice Public function for increasing multiple id approval amount at once
     /// @dev extension of single id increase allowance
     /// @param spender address of the contract to approve
     /// @param ids ids of the ERC1155A to approve
-    /// @param addedValues amounts of the allowance to increase by 
+    /// @param addedValues amounts of the allowance to increase by
     function increaseAllowanceForMany(
         address spender,
         uint256[] memory ids,
@@ -133,7 +138,7 @@ interface IERC1155A is IERC1155 {
     /// @dev extension of single id decrease allowance
     /// @param spender address of the contract to approve
     /// @param ids ids of the ERC1155A to approve
-    /// @param subtractedValues amounts of the allowance to decrease by 
+    /// @param subtractedValues amounts of the allowance to decrease by
     function decreaseAllowanceForMany(
         address spender,
         uint256[] memory ids,
@@ -150,7 +155,7 @@ interface IERC1155A is IERC1155 {
     /// @param receiver address of the user to receive the aERC20 token
     function transmuteToERC20(address owner, uint256 id, uint256 amount, address receiver) external;
 
-    /// @notice Turn aERC20 into an ERC1155A id 
+    /// @notice Turn aERC20 into an ERC1155A id
     /// @dev allows owner to send ERC20 as an ERC1155A id to receiver
     /// @param owner address of the user on whose behalf this transmutation is happening
     /// @param id id of the ERC20s to transmute to erc1155
@@ -164,7 +169,13 @@ interface IERC1155A is IERC1155 {
     /// @param ids ids of the ERC1155A to transmute
     /// @param amounts amounts of the ERC1155A to transmute
     /// @param receiver address of the user to receive the aERC20 tokens
-    function transmuteBatchToERC20(address owner, uint256[] memory ids, uint256[] memory amounts, address receiver) external;
+    function transmuteBatchToERC20(
+        address owner,
+        uint256[] memory ids,
+        uint256[] memory amounts,
+        address receiver
+    )
+        external;
 
     /// @notice Turn aERC20s into ERC1155A ids
     /// @dev allows owner to send aERC20s as ERC1155A ids to receiver
@@ -172,7 +183,13 @@ interface IERC1155A is IERC1155 {
     /// @param ids ids of the ERC20 to transmute
     /// @param amounts amounts of the ERC20 to transmute
     /// @param receiver address of the user to receive the ERC1155 token ids
-    function transmuteBatchToERC1155A(address owner, uint256[] memory ids, uint256[] memory amounts, address receiver) external;
+    function transmuteBatchToERC1155A(
+        address owner,
+        uint256[] memory ids,
+        uint256[] memory amounts,
+        address receiver
+    )
+        external;
 
     /// @notice payable to allow any implementing cross-chain protocol to be paid for fees for broadcasting
     /// @dev should emit any required events inside _registerAERC20 internal function

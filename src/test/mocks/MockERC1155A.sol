@@ -7,6 +7,8 @@ import { Strings } from "openzeppelin-contracts/contracts/utils/Strings.sol";
 
 /// @notice For test purpouses we open mint()/burn() functions of ERC1155A
 contract MockERC1155A is ERC1155A {
+    constructor(string memory name_, string memory symbol_) ERC1155A(name_, symbol_) { }
+
     /// @dev See ../ERC1155A.sol
     function uri(uint256 id) public pure override returns (string memory) {
         return string(abi.encodePacked(_baseURI(), Strings.toString(id)));
